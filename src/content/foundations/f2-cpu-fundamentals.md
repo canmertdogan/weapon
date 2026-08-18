@@ -22,14 +22,15 @@ The CPU is a **state machine**. Registers hold state. Instructions transition st
 | 64-bit | 32-bit | 16-bit | 8-bit (low) | 8-bit (high) | Conventional Role |
 |--------|--------|--------|-------------|--------------|-------------------|
 | RAX | EAX | AX | AL | AH | Return value, accumulator |
-| RBX | EBX | BX | BL | BH | Base pointer (callee-saved) |
+| RBX | EBX | BX | BL | BH | General-purpose (callee-saved) |
 | RCX | ECX | CX | CL | CH | Loop counter, 1st arg (Win64) |
 | RDX | EDX | DX | DL | DH | 2nd arg (Win64), I/O |
 | RSI | ESI | SI | SIL | — | Source index, 2nd arg (SysV) |
 | RDI | EDI | DI | DIL | — | Dest index, 1st arg (SysV) |
 | RBP | EBP | BP | BPL | — | Frame pointer (callee-saved) |
 | RSP | ESP | SP | SPL | — | Stack pointer |
-| R8–R15 | R8D–R15D | R8W–R15W | R8B–R15B | — | Additional GPRs (volatile) |
+| R8–R11 | R8D–R11D | R8W–R11W | R8B–R11B | — | Additional GPRs (volatile) |
+| R12–R15 | R12D–R15D | R12W–R15W | R12B–R15B | — | Additional GPRs (callee-saved) |
 
 ### Special Registers
 

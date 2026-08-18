@@ -32,17 +32,17 @@ Both shift zeros into the vacated bits. The **last bit shifted out lands in CF**
 sar rax, 4           ; rax >>= 4, sign-extended
 ```
 
-`SAR` copies the **sign bit** into the vacated high bits instead of zero. This is what makes it correct for signed division by a power of two — `x >> 31` on a 32-bit signed value produces all-1s if `x` is negative and all-0s if not, which is exactly why you'll see:
+`SAR` copies the **sign bit** into the vacated high bits instead of zero. This is what makes it correct for signed division by a power of two — but only partially. `SAR` rounds toward negative infinity (`floor`), whereas C's signed division rounds toward zero. A bare `sar eax, N` alone does **not** match C's `x / 2^N` when `x` is negative:
 
 ```asm
 mov  eax, [x]
-cdq                  ; sign-extend eax into edx (edx = 0 or -1)
-sar  eax, 2           ; can't just shift — rounds toward -infinity, not 0
-sub  eax, edx
-sar  eax, 0           ; (compilers emit an add+sar combination here, not a bare shift)
+cdq                  ; sign-extend eax into edx (edx = 0 if x>=0, -1 if x<0)
+and  edx, 3          ; bias = (x < 0) ? 3 : 0
+add  eax, edx        ; add the bias so the shift truncates toward zero
+sar  eax, 2          ; now this equals x / 4 with C's round-toward-zero semantics
 ```
 
-The takeaway: seeing `sar` instead of `shr` is itself a signal that the source used a *signed* type. A bare `sar reg, N` alone still doesn't match C's round-toward-zero division exactly — real compiler output adds a rounding fixup before the shift when the value can be negative, which is why signed division looks more elaborate than unsigned division in disassembly.
+The `cdq` + `and edx, N-1` + `add eax, edx` + `sar` pattern is what compilers actually emit for signed division by a constant power of two. Without the bias, `SAR` gives the wrong answer for negatives: `-9 / 4` is `-2` in C, but a bare `sar` produces `-3`.
 
 ### ROL / ROR — Rotate
 

@@ -38,7 +38,7 @@ add [rbp-8], 5      ; Memory += immediate
 | Operation | Result (hex) | CF | OF | ZF | SF | PF |
 |-----------|--------------|----|----|----|----|----|
 | `add al, 0x80` + `0x80` | 0x00 | 1 | 1 | 1 | 0 | 1 |
-| `add rax, 0x7FFFFFFFFFFFFFFF` + 1 | 0x8000000000000000 | 0 | 1 | 0 | 1 | 0 |
+| `add rax, 0x7FFFFFFFFFFFFFFF` + 1 | 0x8000000000000000 | 0 | 1 | 0 | 1 | 1 |
 | `sub rax, 5` - 10 | 0xFFFFFFFFFFFFFFFB | 1 | 0 | 0 | 1 | 0 |
 
 ---
@@ -119,7 +119,7 @@ xor rax, rbx        ; rax ^= rbx
 ```
 
 **XOR tricks**:
-- `xor rax, rax` → Zero register (2 bytes: `48 31 C0`, preferred over `mov rax, 0` = 7 bytes)
+- `xor eax, eax` → Zero register (2 bytes: `31 C0`, zero-extends to fill RAX — preferred over `mov rax, 0` = 7 bytes)
 - `xor rax, -1` → Bitwise NOT (but see NOT below)
 - `xor rax, rbx` / `xor rbx, rax` / `xor rax, rbx` → Swap without temp
 
@@ -191,7 +191,7 @@ not rax             ; rax = ~rax, **no flags affected**
 | `x = a + b;` | `mov eax, [a]` / `add eax, [b]` | |
 | `x = a - b;` | `mov eax, [a]` / `sub eax, [b]` | |
 | `x = a * 5;` | `imul eax, [a], 5` | 3-operand IMUL |
-| `x = a / 2;` | `mov eax, [a]` / `cdq` / `idiv 2` | Signed: CDQ sign-extends |
+| `x = a / 2;` | `mov eax, [a]` / `cdq` / `mov ecx, 2` / `idiv ecx` | Signed: CDQ sign-extends; IDIV has no immediate form |
 | `x = a / 2;` | `mov eax, [a]` / `shr eax, 1` | Unsigned: shift (faster) |
 | `x = a % 2;` | `mov eax, [a]` / `and eax, 1` | Power of 2: bitmask |
 | `if (x == 0)` | `test eax, eax` / `je` | TEST preferred over CMP |

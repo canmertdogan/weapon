@@ -73,9 +73,8 @@ Magic numbers reveal algorithms:
 | `0x243F6A88` | Blowfish |
 | `0x9E3779B9` | TEA / XTEA |
 | `0x811C9DC5` | FNV-1a hash |
-| `0xA3D70A3D70A3D70A` | AES (S-box related) |
 
-Finding these in `.rdata` or as immediates pinpoints a crypto primitive instantly.
+Finding these in `.rdata` or as immediates pinpoints a crypto primitive instantly. (AES doesn't ship a single magic constant — its S-box is a full 256-byte table built from GF(2⁸) multiplicative inverses plus an affine transform. You recognize AES in disassembly by the S-box/Rcon table contents and the `aesenc`/`aesenclast` instructions, not by one number.)
 
 ### Stack Canaries
 

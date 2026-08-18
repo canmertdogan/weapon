@@ -37,7 +37,7 @@ sub  rsp, 0x40    ; reserve locals + alignment + shadow space
 
 ; BODY
 ;   [rbp-0x8]  = local
-;   [rbp+0x10] = 5th argument
+;   [rbp+0x30] = 5th argument
 
 ; EPILOGUE
 mov  rsp, rbp     ; (if RBP was used) deallocate
@@ -79,7 +79,7 @@ Given `[rbp + 0x8]` and `[rbp - 0x4]`:
 
 ```
 HIGH  ┌──────────────────┐
-      │ arg 5 (if any)   │  [rbp + 0x20]
+      │ arg 5 (if any)   │  [rbp + 0x30]
       │ ...              │
       │ return address   │  [rbp + 0x8]
       │ saved RBP        │  [rbp + 0x0]  ← RBP

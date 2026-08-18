@@ -53,12 +53,12 @@ The stub at 0x40 typically prints "This program cannot be run in DOS mode". Spac
 | 0x04 | TimeDateStamp | 4 | Unix timestamp (linker) — often forged |
 | 0x08 | PointerToSymbolTable | 4 | COFF debug (usually 0) |
 | 0x0C | NumberOfSymbols | 4 | COFF debug (usually 0) |
-| 0x10 | SizeOfOptionalHeader | 2 | 0xF0 (PE32), 0x108 (PE32+) |
+| 0x10 | SizeOfOptionalHeader | 2 | 0xE0 (PE32), 0xF0 (PE32+) |
 | 0x12 | Characteristics | 2 | Flags: 0x0002=EXE, 0x2000=DLL, 0x0020=LargeAddrAware |
 
 ---
 
-### Optional Header (PE32+ = 0x108 bytes)
+### Optional Header (PE32+ = 0xF0 bytes)
 
 | Offset | Field | Size | Description |
 |--------|-------|------|-------------|
@@ -105,9 +105,9 @@ The stub at 0x40 typically prints "This program cannot be run in DOS mode". Spac
 | TERMINAL_SERVER_AWARE | 0x8000 | Terminal Server aware |
 
 **CET/Guard flags** (Load Config Directory, DataDirectory[10]):
-- CET: `GUARD_CET` (0x20000000) — Shadow stacks, IBT
-- XFG: `GUARD_XFG` (0x40000000) — Type-based CFI
-- RFG: `GUARD_RFG` (0x80000000) — Return Flow Guard
+- CET: not a `GuardFlags` bit at all — signaled by the separate `DllCharacteristicsEx` field, `IMAGE_DLLCHARACTERISTICS_EX_CET_COMPAT` (0x1) — Shadow stacks, IBT
+- XFG: `IMAGE_GUARD_XFG_ENABLED` (0x00800000) — Type-based CFI
+- RFG: `IMAGE_GUARD_RF_INSTRUMENTED` (0x00020000) / `IMAGE_GUARD_RF_ENABLE` (0x00040000) / `IMAGE_GUARD_RF_STRICT` (0x00080000) — Return Flow Guard
 
 ---
 

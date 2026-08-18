@@ -43,29 +43,28 @@ duration: 15
 
 ## Stack Anatomy
 
+The stack grows **downward** (toward lower addresses). The caller reserves the space above the return address; the callee's prologue reserves everything below it.
+
 ```
 HIGH ADDRESS
 ┌─────────────────────────────┐
 │ Caller's Frame              │
+│   Arguments 5+ (on stack)   │ ← pushed by caller (right-to-left)
+│   Shadow Space (Win64: 32B) │ ← reserved by caller for register spill
 ├─────────────────────────────┤
 │ Return Address (RIP)        │ ← Pushed by CALL
 ├─────────────────────────────┤
 │ Saved RBP (Caller's RBP)    │ ← Pushed by callee prologue
 ├─────────────────────────────┤
-│ Shadow Space (Win64: 32B)   │ ← Reserved for register spill
-├─────────────────────────────┤
 │ Local Variables             │ ← [RBP - offset]
 │   var_1                     │
 │   var_2                     │
 ├─────────────────────────────┤
-│ Saved Non-Volatile Regs     │ ← RBX, RDI, RSI, R12-R15
+│ Saved Non-Volatile Regs     │ ← RBX, RDI, RSI, R12-R15 (Win64)
 ├─────────────────────────────┤
-│ Stack Alignment Padding     │ ← 16-byte alignment before CALL
-├─────────────────────────────┤
-│ Arguments 5+ (on stack)     │
-├─────────────────────────────┤
-│ Return Address (to caller)  │
-LOW ADDRESS
+│ Stack Alignment Padding     │ ← 16-byte alignment
+└─────────────────────────────┘
+LOW ADDRESS                     ← RSP
 ```
 
 ### Prologue / Epilogue Pattern

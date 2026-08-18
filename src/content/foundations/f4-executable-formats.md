@@ -154,7 +154,7 @@ Base Reloc Directory (DataDirectory[5])
        ├─ PageRVA (4KB page base)
        ├─ BlockSize
        └─ Array of WORD (Type + Offset)
-            Type: HIGH 12 bits (usually 0xA = IMAGE_REL_BASED_DIR64)
+            Type: HIGH 4 bits (usually 0xA = IMAGE_REL_BASED_DIR64)
             Offset: LOW 12 bits (offset within page)
 ```
 

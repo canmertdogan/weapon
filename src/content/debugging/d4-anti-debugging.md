@@ -81,9 +81,9 @@ jne failed
 ### NtGlobalFlag / ProcessHeap
 
 - `NtGlobalFlag` in PEB (offset 0xBC in x64, 0x68 in x86) = `0x70` under debugger
-- Heap flags at `PEB->ProcessHeap`:
-  - `Flags` (offset 0x40): `HEAP_GROWABLE (2) | HEAP_DEBUG (0x80000000)` under debugger
-  - `ForceFlags` (offset 0x44): `HEAP_DEBUG (0x80000000)` under debugger
+- Heap flags at `PEB->ProcessHeap` (x64 offsets, matching the `gs:[0x60]` code below — x86 uses 0x40/0x44 instead):
+  - `Flags` (offset 0x70): `HEAP_GROWABLE (2) | HEAP_DEBUG (0x80000000)` under debugger
+  - `ForceFlags` (offset 0x74): `HEAP_DEBUG (0x80000000)` under debugger
 
 ```asm
 mov rax, gs:[0x60]        ; PEB
@@ -130,7 +130,7 @@ test rax, rax
 jne  detected
 ```
 
-Or via `NtQueryInformationThread` with `ThreadQuerySetWin32StartAddress` / `ThreadDebugRegisters`.
+Or by calling `GetThreadContext`/`SetThreadContext` (`NtGetContextThread`/`NtSetContextThread`) with the `CONTEXT_DEBUG_REGISTERS` flag to read DR0–DR7 directly.
 
 **Bypass**: 
 - Use software breakpoints (INT3 / 0xCC) instead
@@ -194,8 +194,7 @@ Or `INT 2Dh` / `INT 3` with specific handling.
 ### 1. Patch It Out
 
 Change the conditional jump:
-- `JNE detected` → `JMP $+0` (NOP equivalent)
-- `JNE` (6 bytes: `0F 85 xx xx xx xx`) → `90 90 90 90 90 90`
+- `JNE` (6 bytes: `0F 85 xx xx xx xx`) → `90 90 90 90 90 90` (NOP it out so execution just falls through)
 - Or invert: `JNE` → `JE` (`0F 85` → `0F 84`)
 
 ### 2. Spoof the Value

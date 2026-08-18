@@ -80,7 +80,7 @@ The DOS header exists for backward compatibility. The stub at offset 0x40 typica
 | 0x04 | TimeDateStamp | 4 bytes | Unix timestamp (linker time) — often forged |
 | 0x08 | PointerToSymbolTable | 4 bytes | COFF debugging (usually 0) |
 | 0x0C | NumberOfSymbols | 4 bytes | COFF debugging (usually 0) |
-| 0x10 | SizeOfOptionalHeader | 2 bytes | 0xF0 (PE32), 0x108 (PE32+) |
+| 0x10 | SizeOfOptionalHeader | 2 bytes | 0xE0 (PE32), 0xF0 (PE32+) |
 | 0x12 | Characteristics | 2 bytes | Flags: 0x0001=relocs stripped, 0x0002=executable, 0x0004=line nums stripped, 0x0008=local syms stripped, 0x0020=large address aware, 0x2000=DLL |
 
 ### Optional Header (PE32+) — Key Fields
@@ -105,7 +105,7 @@ The DOS header exists for backward compatibility. The stub at offset 0x40 typica
 | 0x3C | SizeOfHeaders | 4 bytes | Headers + section table (aligned) |
 | 0x40 | CheckSum | 4 bytes | PE checksum (rarely verified) |
 | 0x44 | Subsystem | 2 bytes | 1=Native, 2=GUI, 3=CUI, 9=Windows CE |
-| 0x46 | DllCharacteristics | 2 bytes | 0x0040=ASLR, 0x0100=DEP, 0x0200=No SEH, 0x0400=No Bind, 0x0800=WDM, 0x2000=Terminal Server Aware, 0x4000=CE, 0x8000=Guard CF |
+| 0x46 | DllCharacteristics | 2 bytes | 0x0040=ASLR, 0x0100=DEP, 0x0200=No Isolation, 0x0400=No SEH, 0x0800=No Bind, 0x2000=WDM Driver, 0x4000=Guard CF, 0x8000=Terminal Server Aware |
 | 0x48 | SizeOfStackReserve | 8 bytes | Initial stack reservation |
 | 0x50 | SizeOfStackCommit | 8 bytes | Initial stack commit |
 | 0x58 | SizeOfHeapReserve | 8 bytes | Heap reservation |
