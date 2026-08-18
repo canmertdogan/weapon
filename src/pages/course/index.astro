@@ -74,63 +74,6 @@ const labsData = getAllLabs().map(l => ({ id: l.id, title: l.title, module: l.mo
     <h2 id="settings-heading" class="text-2xl mb-8">Settings</h2>
     <div class="card space-y-6">
       <div>
-        <h3 class="text-lg mb-4">Theme</h3>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="theme-selector">
-          {[
-            { id: 'default', name: 'Default', bg: '#050507', accent: '#ff2b3a' },
-            { id: 'terminal', name: 'Terminal', bg: '#0a1a0a', accent: '#00ff00' },
-            { id: 'amber', name: 'Amber CRT', bg: '#1a1000', accent: '#ffb000' },
-            { id: 'high-contrast', name: 'High Contrast', bg: '#000000', accent: '#ffffff' },
-          ].map((theme) => (
-            <button
-              type="button"
-              data-theme={theme.id}
-              class="theme-option flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all
-                     {theme.id === 'default' ? 'border-accent' : 'border-border'}"
-              style="background: var(--color-bg-elevated);"
-              aria-pressed={theme.id === 'default'}
-            >
-              <div class="theme-preview" style="
-                width: 60px; height: 40px; border-radius: var(--radius-sm);
-                background: linear-gradient(135deg, ${theme.bg}, ${theme.accent});
-                border: 1px solid var(--color-border);"></div>
-              <span class="text-sm font-medium">{theme.name}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <h3 class="text-lg mb-4">Rank Thresholds</h3>
-        <p class="text-sm text-fg-muted mb-4">Adjust lesson/lab requirements for each rank.</p>
-        <div class="space-y-3" id="rank-thresholds">
-          {[
-            { rank: 'RECRUIT', lessons: 0, labs: 0 },
-            { rank: 'ANALYST', lessons: 3, labs: 1 },
-            { rank: 'RESEARCHER', lessons: 8, labs: 2 },
-            { rank: 'REVERSE ENGINEER', lessons: 15, labs: 3 },
-            { rank: 'BINARY HUNTER', lessons: 25, labs: 5 },
-          ].map((r) => (
-            <div class="flex items-center gap-4 p-3 bg-bg rounded-lg border border-border">
-              <span class="font-display font-bold text-sm text-accent w-32">{r.rank}</span>
-              <div class="flex-1 flex items-center gap-4">
-                <label class="flex items-center gap-2 text-sm">
-                  <span class="text-fg-muted">Lessons:</span>
-                  <input type="number" min="0" max="50" value={r.lessons} data-rank={r.rank} data-type="lessons"
-                         class="w-16 px-2 py-1 bg-bg-elevated border border-border rounded text-fg text-sm" />
-                </label>
-                <label class="flex items-center gap-2 text-sm">
-                  <span class="text-fg-muted">Labs:</span>
-                  <input type="number" min="0" max="20" value={r.labs} data-rank={r.rank} data-type="labs"
-                         class="w-16 px-2 py-1 bg-bg-elevated border border-border rounded text-fg text-sm" />
-                </label>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div class="pt-4 border-t border-border">
         <h3 class="text-lg mb-4">Progress Backup</h3>
         <div class="flex flex-wrap gap-3">
           <button id="export-progress" class="btn btn-secondary">Export Progress (JSON)</button>
@@ -224,9 +167,8 @@ const labsData = getAllLabs().map(l => ({ id: l.id, title: l.title, module: l.mo
 <script type="application/json" id="labs-data" is:inline set:html={JSON.stringify(labsData)} />
 
 <script>
-  import { loadProgress, getRankThresholds, setRankThresholds, exportProgressData, importProgressData, calculateRank, saveProgress, updateRankBadge, type Rank } from '../../scripts/progress';
+  import { loadProgress, exportProgressData, importProgressData } from '../../scripts/progress';
   import { initCommandPalette } from '../../components/CommandPalette';
-  import { updateDashboardUI } from '../../scripts/progress-ui';
 
   const lessonsEl = document.getElementById('lessons-data');
   const modulesEl = document.getElementById('modules-data');
@@ -274,64 +216,6 @@ const labsData = getAllLabs().map(l => ({ id: l.id, title: l.title, module: l.mo
       const labs = JSON.parse(labsEl.textContent || '[]');
       initCommandPalette(modules, labs);
     }
-
-    // Settings: Theme selector
-    const themeButtons = document.querySelectorAll<HTMLElement>('.theme-option');
-    themeButtons.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const theme = btn.dataset.theme;
-        if (!theme) return;
-        document.documentElement.style.setProperty('--color-bg', theme === 'default' ? '#050507' : theme === 'terminal' ? '#0a1a0a' : theme === 'amber' ? '#1a1000' : '#000000');
-        document.documentElement.style.setProperty('--color-accent', theme === 'default' ? '#ff2b3a' : theme === 'terminal' ? '#00ff00' : theme === 'amber' ? '#ffb000' : '#ffffff');
-        document.documentElement.style.setProperty('--color-accent-bright', theme === 'default' ? '#ff5a5a' : theme === 'terminal' ? '#44ff44' : theme === 'amber' ? '#ffcc44' : '#ffffff');
-        document.documentElement.style.setProperty('--color-accent-dim', theme === 'default' ? '#c41424' : theme === 'terminal' ? '#00aa00' : theme === 'amber' ? '#cc8800' : '#cccccc');
-        document.documentElement.style.setProperty('--color-warn', theme === 'default' ? '#ff5a3c' : theme === 'terminal' ? '#44cc44' : theme === 'amber' ? '#ffaa00' : '#ffcccc');
-        document.documentElement.style.setProperty('--color-danger', theme === 'default' ? '#ff3b4d' : theme === 'terminal' ? '#44aa44' : theme === 'amber' ? '#ff8800' : '#ffaaaa');
-        themeButtons.forEach(b => {
-          b.classList.toggle('border-accent', b.dataset.theme === theme);
-          b.classList.toggle('border-border', b.dataset.theme !== theme);
-          b.setAttribute('aria-pressed', String(b.dataset.theme === theme));
-        });
-        localStorage.setItem('weapon:theme', theme);
-      });
-    });
-
-    // Load saved theme
-    const savedTheme = localStorage.getItem('weapon:theme') || 'default';
-    const savedThemeBtn = document.querySelector(`.theme-option[data-theme="${savedTheme}"]`) as HTMLElement;
-    savedThemeBtn?.click();
-
-    // Settings: Rank thresholds
-    const thresholdInputs = document.querySelectorAll<HTMLInputElement>('#rank-thresholds input');
-    thresholdInputs.forEach((input) => {
-      input.addEventListener('change', () => {
-        const rank = input.dataset.rank as Rank;
-        const type = input.dataset.type as 'lessons' | 'labs';
-        const value = parseInt(input.value, 10);
-        if (!rank || !type || isNaN(value)) return;
-        const thresholds = getRankThresholds();
-        if (thresholds[rank]) {
-          thresholds[rank][type] = value;
-          setRankThresholds(thresholds);
-          // Recalculate rank
-          const progress = loadProgress();
-          progress.rank = calculateRank(progress);
-          saveProgress(progress);
-          updateRankBadge();
-          updateDashboardUI();
-        }
-      });
-    });
-
-    // Load saved thresholds
-    const savedThresholds = getRankThresholds();
-    thresholdInputs.forEach((input) => {
-      const rank = input.dataset.rank as Rank;
-      const type = input.dataset.type as 'lessons' | 'labs';
-      if (rank && type && savedThresholds[rank]) {
-        input.value = String(savedThresholds[rank][type]);
-      }
-    });
 
     // Settings: Progress export/import
     const exportBtn = document.getElementById('export-progress');
