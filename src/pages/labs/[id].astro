@@ -16,6 +16,9 @@ const basePath = BASE.replace(/\/$/, '');
 const binaryUrl = lab.binary?.file ? `${basePath}${lab.binary.file}` : '';
 const solutionHtml = marked.parse(lab.solution);
 const methodologyHtml = lab.methodology ? marked.parse(lab.methodology) : '';
+const labelsByAddress: Record<number, string> = lab.code
+  ? Object.fromEntries(Object.entries(lab.code.labels).map(([name, addr]) => [addr, name]))
+  : {};
 
 const difficultyBadge: Record<string, string> = {
   Trivial: 'badge-trivial',
@@ -68,7 +71,10 @@ const difficultyBadge: Record<string, string> = {
         <div class="card">
           <h3 class="text-sm uppercase tracking-wider text-fg-muted mb-3">Disassembly</h3>
           <pre class="code-block text-xs"><code>{lab.code.instructions
-            .map((i) => `${String(i.address).padStart(2, '0')}:  ${i.op} ${i.args.join(', ')}`)
+            .flatMap((i) => {
+              const line = `${i.address.toString(16).padStart(2, '0')}:  ${i.op} ${i.args.join(', ')}`;
+              return labelsByAddress[i.address] ? [`${labelsByAddress[i.address]}:`, line] : [line];
+            })
             .join('\n')}</code></pre>
         </div>
       </section>

@@ -11,11 +11,11 @@ const { modules, currentModule, currentLesson } = Astro.props;
 
 <aside
   id="sidebar"
-  class="fixed inset-y-0 left-0 z-50 w-72 bg-bg-elevated border-r border-border-strong transform -translate-x-full transition-transform duration-300 ease-out lg:relative lg:translate-x-0 lg:static"
+  class="fixed inset-y-0 left-0 z-50 w-72 bg-bg-elevated border-r border-border-strong transform -translate-x-full transition-transform duration-300 ease-out lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:self-start lg:translate-x-0"
   data-open="false"
   aria-label="Course navigation"
 >
-  <div class="flex flex-col h-full overflow-hidden lg:h-screen lg:sticky lg:top-16">
+  <div class="flex flex-col h-full overflow-hidden">
     <div class="p-4 border-b border-border flex items-center justify-between lg:hidden">
       <span class="font-display font-bold text-lg text-accent text-glow">WEAPON</span>
       <button class="btn btn-ghost p-1" id="sidebar-close" aria-label="Close navigation">

@@ -3,15 +3,18 @@
   "title": "The Unknown Binary",
   "module": "final",
   "lesson": "u1",
-  "description": "Investigate a full-size, ~1 MB unknown binary end to end: static triage, import capability mapping, anti-debug awareness, and a hand-decoded second-stage flag hidden the way lab-01 taught you to look. Nothing here is visible on the first screen — you'll need the hex viewer's Find and Go-to-offset tools, not eyeballing. Every skill from the course applies.",
+  "description": "Investigate a full-size, ~1 MB unknown binary end to end: static triage, import capability mapping, a real anti-debug branch, stack-frame and calling-convention reading, and a hand-decoded second-stage flag hidden the way lab-01 taught you to look. The disassembly is genuine — real x86-64 machine code, independently assembled and disassembled, not hand-written pseudocode — so its hex addresses, hex immediates, and symbol-annotated branches read exactly like real objdump/Ghidra output. Nothing here is visible on the first screen — you'll need the hex viewer's Find and Go-to-offset tools, not eyeballing. Every skill from the course applies.",
   "difficulty": "Extreme",
   "estimatedTime": 60,
   "prerequisites": [
     "All prior modules (start through anti-re)",
     "Full investigation workflow: strings → imports → PE structure → behavior → verdict",
     "DOS stub steganography (lab-01)",
+    "Stack frame layout (push/mov/sub rsp — e1-stack-frames)",
+    "x64 calling convention (rcx/rdx argument registers)",
     "Bitwise XOR encoding/decoding (a6-shift-rotate)",
-    "Instruction tracing (mov/xor/cmp/jne)",
+    "Instruction and branch tracing (mov/xor/test/jne/call/ret)",
+    "Reading hex immediates in real disassembler output",
     "YARA rule writing",
     "IOC extraction and reporting",
     "MITRE ATT&CK mapping"
@@ -23,17 +26,39 @@
     "bytes": 1046016
   },
   "code": {
-    "labels": { "loop": 2, "done": 7 },
+    "labels": {
+      "_start": 0,
+      "loop_decode": 36,
+      "detected": 74,
+      "cleanup": 81,
+      "IsDebuggerPresent": 86,
+      "InternetConnectW": 87
+    },
     "instructions": [
-      { "address": 0, "op": "mov", "args": ["rsi", "0x7b"] },
-      { "address": 1, "op": "mov", "args": ["rcx", "23"] },
-      { "address": 2, "op": "mov", "args": ["al", "[rsi]"] },
-      { "address": 3, "op": "xor", "args": ["al", "0x5a"] },
-      { "address": 4, "op": "mov", "args": ["[rsi]", "al"] },
-      { "address": 5, "op": "inc", "args": ["rsi"] },
-      { "address": 6, "op": "dec", "args": ["rcx"] },
-      { "address": 7, "op": "jnz", "args": ["loop"] },
-      { "address": 8, "op": "ret", "args": [] }
+      { "address": 0, "op": "push", "args": ["rbp"] },
+      { "address": 1, "op": "mov", "args": ["rbp, rsp"] },
+      { "address": 4, "op": "sub", "args": ["rsp, 0x20"] },
+      { "address": 8, "op": "call", "args": ["0x56 <IsDebuggerPresent>"] },
+      { "address": 13, "op": "test", "args": ["rax, rax"] },
+      { "address": 16, "op": "jne", "args": ["0x4a <detected>"] },
+      { "address": 22, "op": "mov", "args": ["rsi, 0x7b"] },
+      { "address": 29, "op": "mov", "args": ["rcx, 0x17"] },
+      { "address": 36, "op": "mov", "args": ["al, byte ptr [rsi]"] },
+      { "address": 38, "op": "xor", "args": ["al, 0x5a"] },
+      { "address": 40, "op": "mov", "args": ["byte ptr [rsi], al"] },
+      { "address": 42, "op": "inc", "args": ["rsi"] },
+      { "address": 45, "op": "dec", "args": ["rcx"] },
+      { "address": 48, "op": "jne", "args": ["0x24 <loop_decode>"] },
+      { "address": 50, "op": "lea", "args": ["rcx, [rip + 0x1f]  ; -> host_arg"] },
+      { "address": 57, "op": "mov", "args": ["rdx, 0x1bb"] },
+      { "address": 64, "op": "call", "args": ["0x57 <InternetConnectW>"] },
+      { "address": 69, "op": "jmp", "args": ["0x51 <cleanup>"] },
+      { "address": 74, "op": "mov", "args": ["rax, 0"] },
+      { "address": 81, "op": "mov", "args": ["rsp, rbp"] },
+      { "address": 84, "op": "pop", "args": ["rbp"] },
+      { "address": 85, "op": "ret", "args": [] },
+      { "address": 86, "op": "ret", "args": [] },
+      { "address": 87, "op": "ret", "args": [] }
     ]
   },
   "questions": [
@@ -69,24 +94,42 @@
     },
     {
       "id": "q6",
+      "type": "offset",
+      "prompt": "The function prologue reserves local stack space with `sub rsp, X`. How many bytes does it reserve, in hex?",
+      "answer": "0x20"
+    },
+    {
+      "id": "q7",
+      "type": "string",
+      "prompt": "After `call IsDebuggerPresent`, `test rax, rax` followed by `jne detected` checks the result. If a debugger IS attached (result is non-zero), which label does execution jump to?",
+      "answer": "detected"
+    },
+    {
+      "id": "q8",
+      "type": "string",
+      "prompt": "Per the x64 calling convention, which register holds the first argument (the connection host pointer) passed into `InternetConnectW` here?",
+      "answer": "rcx"
+    },
+    {
+      "id": "q9",
       "type": "string",
       "prompt": "The disassembly reads a byte from [rsi], starting at rsi=0x7B. Per lab-01's lesson, what region of the file is that offset in?",
       "answer": "dos stub"
     },
     {
-      "id": "q7",
+      "id": "q10",
       "type": "string",
-      "prompt": "The loop XORs each of the 23 bytes at [rsi] with an immediate and writes it back in place. What is that key, in hex?",
+      "prompt": "The loop at `loop_decode:` XORs each of the 23 bytes at [rsi] with an immediate and writes it back in place. What is that key, in hex?",
       "answer": "0x5a"
     },
     {
-      "id": "q8",
+      "id": "q11",
       "type": "string",
       "prompt": "Decode the 23 bytes at file offset 0x7B with that key. What string do you get? (format: WEAPON{...})",
       "answer": "weapon{full_kill_chain}"
     },
     {
-      "id": "q9",
+      "id": "q12",
       "type": "string",
       "prompt": "What is the overall verdict? (three words, e.g. remote access trojan)",
       "answer": "remote access trojan"
@@ -96,19 +139,26 @@
     "This file is over a megabyte. Don't scroll — parse the headers first, then use the hex viewer's Find (F) to jump straight to what you're looking for. That's what a real analyst does with strings/grep on a sample this size, too.",
     "The four IOC strings (domain, mutex, registry path, dropped-file path) are buried far apart from each other and from the headers — none of them are anywhere near the start of the file.",
     "The imports cluster into four capabilities: network, injection, persistence, and anti-analysis.",
+    "The routine has a normal function shape: prologue (push rbp / mov rbp,rsp / sub rsp,X) at the top, epilogue (mov rsp,rbp / pop rbp / ret) at the bottom — everything in between is the actual work.",
+    "This is a real disassembler's output, so immediates print in hex, not decimal — `0x17` is 23, `0x1bb` is 443. Converting hex to decimal by hand is the same skill lesson A6 covers.",
+    "Right after the prologue, the very first real work the function does is call IsDebuggerPresent and branch on the result. Trace both paths: what happens if it detects a debugger, and what happens if it doesn't?",
+    "mov rcx, ... then mov rdx, ... immediately before a call is the x64 calling convention in action — the first two integer/pointer arguments always land in rcx and rdx, in that order. The `lea rcx, [rip+0x1f] ; -> host_arg` line loads a local placeholder pointer for this demo — the live C2 domain string itself is a separate IOC, buried in `.data` like the others.",
     "The disassembly's starting address for [rsi], 0x7B, isn't inside any section — it's before the PE header even begins, in the first few hundred bytes of the file. Where else in the file did an earlier lab teach you to look?",
-    "cmp isn't the only way to check a value: xor-ing a byte with the same key twice returns the original byte. That's exactly what encode and decode are here — the same operation.",
+    "cmp/test isn't the only way to check a value: xor-ing a byte with the same key twice returns the original byte. That's exactly what encode and decode are here — the same operation.",
     "Network + injection + persistence + anti-debugging + a self-decoding second flag together describe a fully-featured implant, not a single-purpose tool."
   ],
-  "methodology": "## Investigation Methodology — The RE Loop\n\nThis sample is roughly **1 MB** — around 65,000 hex-viewer rows. That's the point: nothing here rewards scrolling. Every real reverse engineer's first move on an unfamiliar sample this size is the same one you have available here — parse the headers to know *what* to look for, then jump straight to it with `strings`/`grep` (or, in the built-in viewer, **Find** — press `F`) instead of reading the file top to bottom.\n\n### Phase 1: Static Triage (5 min)\n- **File info**: Hash (MD5/SHA256), size (~1 MB — large enough that manual scanning isn't viable), type, architecture\n- **PE headers**: Sections, entry point, timestamps, characteristics — the header only occupies the first ~1 KB, the rest is section content\n- **Strings**: `strings -a -el` — extract ASCII + UTF-16 from every section, *and* the DOS stub (lab-01's lesson: `strings` with default settings skips it, and it's not a mapped section, so ASCII scanners often miss what's hidden there). On a real sample you'd pipe this through `grep` for anything domain/registry/path-shaped; here, the hex viewer's **Find** does the same job against known substrings once you've decided what to search for.\n- **Imports/Exports**: Capability fingerprint\n- **Resources**: Icons, manifests, embedded files\n\n### Phase 2: Capability Mapping (10 min)\nCluster imports into ATT&CK techniques:\n\n| Cluster | APIs | Technique |\n|---------|------|-----------|\n| **Network** | `InternetOpenW`, `InternetConnectW`, `HttpSendRequestW` | T1071.001 |\n| **Injection** | `VirtualAllocEx`, `CreateRemoteThread` | T1055 |\n| **Persistence** | `RegSetValueExW`, `Run` key path | T1547.001 |\n| **Defense Evasion** | `IsDebuggerPresent` | T1622 |\n\nA sample with all four clusters present is a fully-featured implant, not a proof-of-concept.\n\n### Phase 3: The Disassembly — A Self-Decoding Routine (15 min)\nThe binary ships a short loop instead of a plain second string:\n```\n0: mov rsi, 0x7B     ; rsi = file offset, not a section RVA\n1: mov rcx, 23       ; 23 bytes to process\nloop:\n2: mov al, [rsi]     ; read the encoded byte\n3: xor al, 0x5A      ; XOR with a single-byte key\n4: mov [rsi], al      ; write the decoded byte back\n5: inc rsi\n6: dec rcx\n7: jnz loop\n8: ret\n```\n- **XOR is self-inverse**: `(x XOR k) XOR k == x`. Whatever bytes live at `[rsi]` before this loop runs are the *encoded* form; after it runs, they're plaintext. You can do the same transform by hand, byte by byte, without a debugger.\n- **Address `0x7B` is not a section RVA** — cross-reference it against the DOS header layout from lesson F1 and lab-01: `e_lfanew` (offset `0x3C`) points to the real PE signature, and everything between `0x40` and `e_lfanew` is DOS stub padding. `0x7B` falls in that range. Unlike the other IOCs, this one is near the front of the file — use **Go to offset** (`G`) to jump straight to `0x7B`.\n- Read the 23 raw bytes at file offset `0x7B` from the hex viewer, XOR each one with `0x5A` by hand (or in a scratch script), and you have the second flag.\n\n### Phase 4: IOC Extraction (10 min)\nEach of these strings is planted deep inside `.data`, spread apart from each other and from anything else recognizable — search for each one individually with **Find**:\n\n| Type | Value | Context |\n|------|-------|---------|\n| **Network** | `deep-space-c2.net:443/beacon.php` | C2 endpoint |\n| **Host** | `Global\\capstone_mutex_7` | Mutex |\n| **Persistence** | `HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run` | Run key |\n| **File** | `%APPDATA%\\winlogon.exe` | Dropped payload |\n| **Process** | `winlogon.exe` (masqueraded) | Process name |\n| **Anti-Analysis** | `IsDebuggerPresent` check | Defense evasion |\n\n### Phase 5: Attribution & Reporting (10 min)\n- **Malware Family**: Compare IOCs to known families (VT, Malpedia)\n- **ATT&CK Mapping**: Tag each capability, including the anti-debug check and the DOS-stub steganography technique itself (T1027, obfuscated files/information)\n- **Verdict**: Classify (RAT, loader, ransomware, wiper, etc.)\n- **Report**: Executive summary + technical details + IOCs + mitigations",
+  "methodology": "## Investigation Methodology — The RE Loop\n\nThis sample is roughly **1 MB** — around 65,000 hex-viewer rows. That's the point: nothing here rewards scrolling. Every real reverse engineer's first move on an unfamiliar sample this size is the same one you have available here — parse the headers to know *what* to look for, then jump straight to it with `strings`/`grep` (or, in the built-in viewer, **Find** — press `F`) instead of reading the file top to bottom.\n\nOne more thing before you start: the disassembly below is **real** — it's genuine x86-64 machine code, assembled with a real toolchain and disassembled with a real disassembler (Capstone). The bytes at the entry point of `.text` are exactly what's shown; if you downloaded this file and ran `objdump -d` or loaded it in Ghidra yourself, you'd get the same instructions at the same addresses. That's why the addresses below are real hex file offsets (not a friendly 0, 1, 2, ...) and why the immediates print in hex the way a real disassembler shows them.\n\n### Phase 1: Static Triage (5 min)\n- **File info**: Hash (MD5/SHA256), size (~1 MB — large enough that manual scanning isn't viable), type, architecture\n- **PE headers**: Sections, entry point, timestamps, characteristics — the header only occupies the first ~1 KB, the rest is section content\n- **Strings**: `strings -a -el` — extract ASCII + UTF-16 from every section, *and* the DOS stub (lab-01's lesson: `strings` with default settings skips it, and it's not a mapped section, so ASCII scanners often miss what's hidden there). On a real sample you'd pipe this through `grep` for anything domain/registry/path-shaped; here, the hex viewer's **Find** does the same job against known substrings once you've decided what to search for.\n- **Imports/Exports**: Capability fingerprint\n- **Resources**: Icons, manifests, embedded files\n\n### Phase 2: Capability Mapping (10 min)\nCluster imports into ATT&CK techniques:\n\n| Cluster | APIs | Technique |\n|---------|------|-----------|\n| **Network** | `InternetOpenW`, `InternetConnectW`, `HttpSendRequestW` | T1071.001 |\n| **Injection** | `VirtualAllocEx`, `CreateRemoteThread` | T1055 |\n| **Persistence** | `RegSetValueExW`, `Run` key path | T1547.001 |\n| **Defense Evasion** | `IsDebuggerPresent` | T1622 |\n\nA sample with all four clusters present is a fully-featured implant, not a proof-of-concept.\n\n### Phase 3: The Disassembly — Real Machine Code, Real Disassembler (20 min)\nThis is the exact output of disassembling the binary's own entry point — not a hand-written illustration:\n```\n_start:\n 0:  push rbp\n 1:  mov  rbp, rsp\n 4:  sub  rsp, 0x20                        ; reserve 32 bytes of locals\n 8:  call 0x56 <IsDebuggerPresent>\n d:  test rax, rax\n10:  jne  0x4a <detected>                  ; debugger attached -> bail\n16:  mov  rsi, 0x7b\n1d:  mov  rcx, 0x17                        ; 0x17 = 23 (decimal)\nloop_decode:\n24:  mov  al, byte ptr [rsi]\n26:  xor  al, 0x5a\n28:  mov  byte ptr [rsi], al\n2a:  inc  rsi\n2d:  dec  rcx\n30:  jne  0x24 <loop_decode>\n32:  lea  rcx, [rip + 0x1f]  ; -> host_arg\n39:  mov  rdx, 0x1bb                       ; 0x1bb = 443 (decimal)\n40:  call 0x57 <InternetConnectW>\n45:  jmp  0x51 <cleanup>\ndetected:\n4a:  mov  rax, 0\ncleanup:\n51:  mov  rsp, rbp\n54:  pop  rbp\n55:  ret\nIsDebuggerPresent:\n56:  ret\nInternetConnectW:\n57:  ret\n```\n- **The addresses are real file-relative offsets into the routine**, not a simplified index — real instructions have variable byte lengths (`push rbp` is 1 byte, `mov rsi, 0x7b` is 7 bytes), so real addresses aren't evenly spaced. That's a genuine tell you'll see in every real disassembly.\n- **Immediates print in hex**: `0x17` is 23, `0x1bb` is 443. Real disassemblers don't guess which base is friendliest for you — converting is on the analyst.\n- **Prologue/epilogue**: `push rbp` / `mov rbp, rsp` / `sub rsp, 0x20` opens a stack frame with 32 bytes of local space; `mov rsp, rbp` / `pop rbp` / `ret` tears it back down. Same shape as lesson E1's stack frame diagrams — this is what every non-trivial function looks like underneath.\n- **The anti-debug branch is real, not decorative**: `call IsDebuggerPresent` → `test rax, rax` → `jne detected`. If a debugger is attached, execution jumps straight past the network call and the decode-then-beacon logic to `cleanup` — the malware simply does nothing observable. This is exactly why dynamic analysis of this sample under a naively-attached debugger would look inert.\n- **The decode loop is self-inverse**: `(x XOR k) XOR k == x`. Whatever bytes live at `[rsi]` before this loop runs are the *encoded* form; after it runs, they're plaintext. You can do the same transform by hand, byte by byte, without a debugger.\n- **The calling convention is on display**: `lea rcx, [rip+0x1f]` then `mov rdx, 0x1bb` immediately before `call InternetConnectW` — the x64 ABI passes the first two arguments in `rcx` and `rdx`. This is the same convention lesson W5 covers for every WinAPI call. The pointer `rcx` loads here (`host_arg`) is a small local placeholder used purely to demonstrate the calling convention — the *live* C2 domain string is a separate IOC, buried in `.data` (Phase 4), not this one.\n- **Address `0x7B` is not a section RVA** — cross-reference it against the DOS header layout from lesson F1 and lab-01: `e_lfanew` (offset `0x3C`) points to the real PE signature, and everything between `0x40` and `e_lfanew` is DOS stub padding. `0x7B` falls in that range. Unlike the other IOCs, this one is near the front of the file — use **Go to offset** (`G`) to jump straight to `0x7B`.\n- Read the 23 raw bytes at file offset `0x7B` from the hex viewer, XOR each one with `0x5A` by hand (or in a scratch script), and you have the second flag.\n\n### Phase 4: IOC Extraction (10 min)\nEach of these strings is planted deep inside `.data`, spread apart from each other and from anything else recognizable — search for each one individually with **Find**:\n\n| Type | Value | Context |\n|------|-------|---------|\n| **Network** | `deep-space-c2.net:443/beacon.php` | C2 endpoint |\n| **Host** | `Global\\capstone_mutex_7` | Mutex |\n| **Persistence** | `HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run` | Run key |\n| **File** | `%APPDATA%\\winlogon.exe` | Dropped payload |\n| **Process** | `winlogon.exe` (masqueraded) | Process name |\n| **Anti-Analysis** | `IsDebuggerPresent` check with a real conditional branch | Defense evasion |\n\n### Phase 5: Attribution & Reporting (10 min)\n- **Malware Family**: Compare IOCs to known families (VT, Malpedia)\n- **ATT&CK Mapping**: Tag each capability, including the anti-debug check and the DOS-stub steganography technique itself (T1027, obfuscated files/information)\n- **Verdict**: Classify (RAT, loader, ransomware, wiper, etc.)\n- **Report**: Executive summary + technical details + IOCs + mitigations",
   "commonPitfalls": [
     "Trying to scroll through a ~1 MB file byte by byte instead of parsing the headers first and using Find/Go-to-offset",
     "Stopping at strings — missing dynamically resolved imports",
     "Not checking for packers — UPX, custom stubs hide imports/code",
     "Missing the DOS stub entirely — most string scanners default to mapped sections only",
     "Treating `[rsi]` as a section-relative RVA instead of the flat file offset it actually is here",
+    "Misreading hex immediates as decimal — 0x17 is 23, not seventeen; 0x1bb is 443, not one-eighty-something",
     "Applying the XOR key to the wrong byte range (it's exactly 23 bytes, not the whole stub)",
-    "Overlooking `IsDebuggerPresent` — a single anti-analysis import is still a capability, even with no visible branch logic around it in this excerpt",
+    "Assuming the anti-debug check always falls through — trace the `detected` branch too, it's the whole reason dynamic analysis of this sample can look inert under a debugger",
+    "Mixing up which register holds which argument — rcx is always argument 1, rdx is always argument 2, in x64",
+    "Mistaking the routine's local `host_arg` placeholder for the actual C2 domain — the live IOC is a separate string in `.data`",
     "Not verifying dropped file — hash it, analyze it separately",
     "Rushing to verdict without the full capability picture (network + injection + persistence + anti-debug + hidden payload)"
   ],
@@ -118,6 +168,7 @@
     "FLOSS (obfuscated strings)",
     "YARA (rule writing, scanning)",
     "x64dbg (dynamic verification)",
+    "objdump / Capstone (to verify the disassembly independently)",
     "A scratch Python/CyberChef XOR script (for the hand-decode step)",
     "VirusTotal / MalwareBazaar (intel pivot)",
     "MITRE ATT&CK Navigator (mapping)",
@@ -126,7 +177,9 @@
   "references": [
     "All course modules",
     "Lab 01: Hidden String Hunt — DOS stub steganography",
-    "Lesson A6: Bit Tricks — XOR and self-inverse operations",
+    "Lesson E1: Stack Frames — prologue/epilogue shape",
+    "Lesson W5: WinAPI & Native — x64 calling convention",
+    "Lesson A6: Bit Tricks — XOR, self-inverse operations, hex/decimal conversion",
     "MITRE ATT&CK Enterprise Matrix",
     "Mandiant CAPA documentation",
     "Malware Analysis: Investigation Loop methodology",
@@ -139,7 +192,8 @@
     "Research: How would you detect this in memory (Volatility)?",
     "Build a Sigma rule for the persistence registry write",
     "Write a script that automatically finds and XOR-brute-forces short encoded regions in a DOS stub",
+    "Patch the binary (or the disassembly logic) so it runs its full payload even with a debugger attached — what's the minimal change to the `jne detected` branch?",
     "Simulate: How would this behave in a sandbox? Would `IsDebuggerPresent` returning true change its behavior, and how would you patch around that?"
   ],
-  "solution": "## The Unknown Binary — Verdict\n\nThe full profile, assembled with the investigation loop, from a ~1 MB sample where none of this sits near the start of the file:\n\n**Strings (`.data`, found via Find — not visible on the first screen)**\n- C2 domain: `deep-space-c2.net` — file offset `0x6E240`\n- Mutex: `Global\\capstone_mutex_7` — file offset `0x97A50`\n- Persistence: `Software\\Microsoft\\Windows\\CurrentVersion\\Run` — file offset `0xC3970`\n- Dropped file: `%APPDATA%\\winlogon.exe` — file offset `0xED180`\n\n**Imports (capabilities)**\n- Network: `InternetOpenW` / `InternetConnectW` / `HttpSendRequestW` (HTTP C2)\n- Injection: `VirtualAllocEx` / `CreateRemoteThread` (run code in other processes)\n- Persistence: `RegSetValueExW` (Run key)\n- Anti-analysis: `IsDebuggerPresent` (checks for a debugger before acting)\n\n**The hidden second flag**\nThe disassembly shows a loop reading 23 bytes starting at `rsi = 0x7B`, XOR-ing each with `0x5A`, and writing it back in place. `0x7B` sits in the DOS stub — the same hiding spot lab-01 taught, except this time the payload isn't plaintext, it's encoded, so a plain ASCII scan of the hex dump won't reveal it. Reading the 23 raw bytes at file offset `0x7B` and XOR-ing each with `0x5A` by hand decodes to:\n\n```\nWEAPON{full_kill_chain}\n```\n\n**Narrative**: drops `winlogon.exe` (masquerading as the legitimate process), writes a Run key, guards itself with a mutex, checks for a debugger before running, phones home over HTTP, and carries a second-stage payload hidden with a technique straight out of lesson one of the course.\n\n**Verdict**: a **remote access trojan** (RAT).\n\n**IOCs**: `deep-space-c2.net`, `Global\\capstone_mutex_7`, the Run-key value, `%APPDATA%\\winlogon.exe`, the `IsDebuggerPresent` check, and the sample hash."
+  "solution": "## The Unknown Binary — Verdict\n\nThe full profile, assembled with the investigation loop, from a ~1 MB sample where none of this sits near the start of the file:\n\n**Strings (`.data`, found via Find — not visible on the first screen)**\n- C2 domain: `deep-space-c2.net` — file offset `0x6E240`\n- Mutex: `Global\\capstone_mutex_7` — file offset `0x97A50`\n- Persistence: `Software\\Microsoft\\Windows\\CurrentVersion\\Run` — file offset `0xC3970`\n- Dropped file: `%APPDATA%\\winlogon.exe` — file offset `0xED180`\n\n**Imports (capabilities)**\n- Network: `InternetOpenW` / `InternetConnectW` / `HttpSendRequestW` (HTTP C2)\n- Injection: `VirtualAllocEx` / `CreateRemoteThread` (run code in other processes)\n- Persistence: `RegSetValueExW` (Run key)\n- Anti-analysis: `IsDebuggerPresent` (checks for a debugger before acting)\n\n**The full routine**\nThe disassembly is real, genuine x86-64 machine code — not a fragment, not pseudocode: a standard prologue (`push rbp` / `mov rbp,rsp` / `sub rsp,0x20` — 32 bytes of locals) at address `0x0`, then `call IsDebuggerPresent` / `test rax,rax` / `jne detected` at `0x8`. If a debugger is attached, execution jumps straight to `cleanup` (`0x51`) and the function returns having done nothing observable — a real, working anti-debug gate, not just an unused import. If no debugger is detected, it falls into the XOR decode loop (`loop_decode:` at `0x24`), then loads `rcx` with a pointer (`lea rcx, [rip+0x1f]`, at `0x32`) and `rdx` with `0x1bb` (443 decimal) before `call InternetConnectW` at `0x40` — textbook x64 calling convention, first two arguments in `rcx` then `rdx` — before joining the same `cleanup` epilogue. The `rcx` pointer here is a local placeholder used to demonstrate the calling convention; the live C2 domain is the separate string found in `.data`.\n\n**The hidden second flag**\nThe loop reads 23 (`0x17`) bytes starting at `rsi = 0x7B`, XOR-ing each with `0x5A`, and writing it back in place. `0x7B` sits in the DOS stub — the same hiding spot lab-01 taught, except this time the payload isn't plaintext, it's encoded, so a plain ASCII scan of the hex dump won't reveal it. Reading the 23 raw bytes at file offset `0x7B` and XOR-ing each with `0x5A` by hand decodes to:\n\n```\nWEAPON{full_kill_chain}\n```\n\n**Narrative**: drops `winlogon.exe` (masquerading as the legitimate process), writes a Run key, guards itself with a mutex, checks for a debugger and goes dormant if one is found, phones home over HTTP when it isn't, and carries a second-stage payload hidden with a technique straight out of lesson one of the course.\n\n**Verdict**: a **remote access trojan** (RAT).\n\n**IOCs**: `deep-space-c2.net`, `Global\\capstone_mutex_7`, the Run-key value, `%APPDATA%\\winlogon.exe`, the `IsDebuggerPresent` check with its real conditional branch, and the sample hash."
 }

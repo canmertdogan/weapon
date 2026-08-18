@@ -27,11 +27,24 @@ const interactive = getInteractiveProps(lesson.id, lesson.interactive);
 
 <Base title={lesson.title}>
   <Header slot="header" />
+  <button
+    id="focus-mode-toggle"
+    class="btn btn-ghost text-sm"
+    style="position: fixed; top: calc(4rem + var(--spacing-3, 0.75rem)); right: var(--spacing-4, 1rem); z-index: 30;"
+    aria-pressed="false"
+    aria-label="Toggle focus mode"
+    title="Focus mode (F) — hide navigation and read distraction-free"
+  >
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
+      <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+    </svg>
+    <span id="focus-mode-label">Focus</span>
+  </button>
   <div class="flex">
-    <div class="lg:w-72 lg:flex-shrink-0 lg:border-r lg:border-border lg:bg-bg-elevated/30">
+    <div id="lesson-sidebar-col" class="lg:w-72 lg:flex-shrink-0 lg:border-r lg:border-border lg:bg-bg-elevated/30">
       <Sidebar modules={tree} currentModule={module} currentLesson={lesson.id} />
     </div>
-    <article class="flex-1 min-w-0 max-w-3xl mx-auto px-4 py-8">
+    <article id="lesson-article" class="flex-1 min-w-0 max-w-3xl mx-auto px-4 py-8">
       <header class="mb-8">
         <a href={`${BASE}course/${module}`} class="font-mono text-sm text-fg-muted hover:text-accent-bright transition-colors mb-2 inline-block">
           {module.toUpperCase()} · LESSON {String(lesson.order).padStart(2, '0')}
@@ -104,15 +117,15 @@ const interactive = getInteractiveProps(lesson.id, lesson.interactive);
         <div id="lesson-notes-container"></div>
       </section>
 
-      <nav class="flex items-center justify-between gap-4 mt-12 pt-6 border-t border-border" aria-label="Lesson navigation">
-        <div class="flex-1">
+      <nav class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mt-12 pt-6 border-t border-border" aria-label="Lesson navigation">
+        <div class="sm:flex-1 min-w-0 order-2 sm:order-1">
           {prev && (
-            <a href={prev.href} class="btn btn-secondary text-sm">
-              ← {prev.title}
+            <a href={prev.href} class="btn btn-secondary text-sm w-full sm:w-auto sm:max-w-full">
+              <span class="truncate min-w-0">← {prev.title}</span>
             </a>
           )}
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center justify-center gap-2 order-1 sm:order-2 flex-wrap">
           <button id="mark-complete" class="btn btn-secondary text-sm" data-lesson={lesson.id}>
             Mark Complete
           </button>
@@ -125,10 +138,10 @@ const interactive = getInteractiveProps(lesson.id, lesson.interactive);
             Print
           </button>
         </div>
-        <div class="flex-1 text-right">
+        <div class="sm:flex-1 min-w-0 text-right order-3">
           {next && (
-            <a href={next.href} class="btn btn-primary text-sm">
-              {next.title} →
+            <a href={next.href} class="btn btn-primary text-sm w-full sm:w-auto sm:max-w-full">
+              <span class="truncate min-w-0">{next.title} →</span>
             </a>
           )}
         </div>
@@ -178,6 +191,35 @@ const interactive = getInteractiveProps(lesson.id, lesson.interactive);
     }
   });
 
+  // Focus mode: hides site header/footer/course sidebar so the reader can
+  // concentrate on lesson content alone. Preference persists across lessons.
+  const FOCUS_MODE_KEY = 'weapon:focus-mode';
+  const focusToggle = document.getElementById('focus-mode-toggle');
+  const focusLabel = document.getElementById('focus-mode-label');
+
+  function applyFocusMode(on: boolean): void {
+    document.documentElement.toggleAttribute('data-focus-mode', on);
+    focusToggle?.setAttribute('aria-pressed', String(on));
+    if (focusLabel) focusLabel.textContent = on ? 'Exit Focus' : 'Focus';
+  }
+
+  applyFocusMode(localStorage.getItem(FOCUS_MODE_KEY) === 'true');
+
+  focusToggle?.addEventListener('click', () => {
+    const next = document.documentElement.getAttribute('data-focus-mode') === null;
+    localStorage.setItem(FOCUS_MODE_KEY, String(next));
+    applyFocusMode(next);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'f' && e.key !== 'F') return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const active = document.activeElement;
+    const tag = active ? (active as HTMLElement).tagName : '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || (active as HTMLElement)?.isContentEditable) return;
+    focusToggle?.click();
+  });
+
   // Initialize lesson notes
   const notesContainer = document.getElementById('lesson-notes-container');
   const notesLessonId = btn?.dataset.lesson;
@@ -187,6 +229,21 @@ const interactive = getInteractiveProps(lesson.id, lesson.interactive);
 </script>
 
 <style>
+  :global(html[data-focus-mode] #site-header),
+  :global(html[data-focus-mode] #site-footer),
+  :global(html[data-focus-mode] #lesson-sidebar-col) {
+    display: none !important;
+  }
+
+  :global(html[data-focus-mode] #lesson-article) {
+    max-width: 56rem;
+  }
+
+  #focus-mode-toggle[aria-pressed="true"] {
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+
   .prose-content :global(h2) { margin: 2rem 0 1rem; }
   .prose-content :global(h3) { margin: 1.5rem 0 0.75rem; }
   .prose-content :global(p) { margin: 0.75rem 0; line-height: 1.7; }
