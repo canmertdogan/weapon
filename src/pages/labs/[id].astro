@@ -28,7 +28,7 @@ const difficultyBadge: Record<string, string> = {
 <Base title={`${lab.title} — Lab`}>
   <Header slot="header" />
 
-  <div class="max-w-4xl mx-auto">
+  <div class="max-w-6xl mx-auto">
     <header class="py-10">
       <div class="flex items-center gap-3 mb-3">
         <span class="font-mono text-sm text-accent">{lab.id.toUpperCase()}</span>
@@ -49,32 +49,36 @@ const difficultyBadge: Record<string, string> = {
       </div>
     </header>
 
+    {lab.binary && (
+      <section class="pb-6">
+        <h2 class="text-xl mb-4">Investigate</h2>
+        <div
+          id="lab-hex"
+          data-binary-url={binaryUrl}
+          data-binary-hex={lab.binary.hex || ''}
+          class="mb-4"
+        ></div>
+        {lab.binary.file && (
+          <a href={binaryUrl} download class="btn btn-secondary text-sm mb-4">
+            Download {lab.binary.name}
+          </a>
+        )}
+      </section>
+    )}
+
+    {lab.code && (
+      <section class="pb-6">
+        <div class="card">
+          <h3 class="text-sm uppercase tracking-wider text-fg-muted mb-3">Disassembly</h3>
+          <pre class="code-block text-xs"><code>{lab.code.instructions
+            .map((i) => `${String(i.address).padStart(2, '0')}:  ${i.op} ${i.args.join(', ')}`)
+            .join('\n')}</code></pre>
+        </div>
+      </section>
+    )}
+
     <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-12">
       <div>
-        <h2 class="text-xl mb-4">Investigate</h2>
-        {lab.binary && (
-          <div>
-            <div
-              id="lab-hex"
-              data-binary-url={binaryUrl}
-              data-binary-hex={lab.binary.hex || ''}
-              class="mb-4"
-            ></div>
-            {lab.binary.file && (
-              <a href={binaryUrl} download class="btn btn-secondary text-sm mb-4">
-                Download {lab.binary.name}
-              </a>
-            )}
-          </div>
-        )}
-        {lab.code && (
-          <div class="card mb-4">
-            <h3 class="text-sm uppercase tracking-wider text-fg-muted mb-3">Disassembly</h3>
-            <pre class="code-block text-xs"><code>{lab.code.instructions
-              .map((i) => `${String(i.address).padStart(2, '0')}:  ${i.op} ${i.args.join(', ')}`)
-              .join('\n')}</code></pre>
-          </div>
-        )}
         <div class="mt-6">
           <h3 class="text-lg mb-3">Hints</h3>
           <div>

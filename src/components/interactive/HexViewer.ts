@@ -34,7 +34,7 @@ export class HexViewer {
         .hex-toolbar { display: flex; align-items: center; justify-content: space-between; padding: var(--spacing-sm) var(--spacing-md); border-bottom: 1px solid var(--color-border); flex-wrap: wrap; gap: var(--spacing-sm); }
         .hex-toolbar-title { color: var(--color-fg-muted); font-size: 0.75rem; letter-spacing: 0.05em; }
         .hex-toolbar-actions { display: flex; gap: var(--spacing-xs); }
-        .hex-body { max-height: 360px; overflow: auto; outline: none; }
+        .hex-body { max-height: 520px; overflow: auto; outline: none; }
         .hex-header { display: flex; padding: var(--spacing-xs) var(--spacing-md); color: var(--color-fg-muted); font-size: 0.6875rem; letter-spacing: 0.05em; border-bottom: 1px solid var(--color-border); position: sticky; top: 0; background: var(--color-bg); z-index: 1; }
         .hex-row { display: flex; align-items: baseline; padding: 0 var(--spacing-md); white-space: nowrap; }
         .hex-row:hover { background: var(--color-bg-elevated); }
