@@ -1,10 +1,13 @@
-import { buildHexRows, hexToBytes, toHex } from '../../utils/hex';
+import { buildHexRows, hexToBytes, toHex, type HexRow } from '../../utils/hex';
 
 export interface HexViewerOptions {
   data: string;
   mode?: 'raw' | 'pe';
   highlightRanges?: { start: number; end: number; label: string; color: string }[];
 }
+
+const ROW_HEIGHT = 23; // px — matches .hex-row's fixed height below
+const ROW_BUFFER = 12; // extra rows rendered above/below the viewport
 
 export class HexViewer {
   private container: HTMLElement;
@@ -14,19 +17,27 @@ export class HexViewer {
   private focusedOffset: number = 0;
   private readonly rowsPerPage = 16;
   private readonly cols = 16;
+  private readonly totalRows: number;
+  private renderedStartRow = 0;
+  private renderedEndRow = 0;
+  private scrollTicking = false;
 
   constructor(container: HTMLElement, options: HexViewerOptions) {
     this.container = container;
     this.bytes = hexToBytes(options.data);
     this.highlightRanges = options.highlightRanges || [];
-    this.render();
+    this.totalRows = Math.max(1, Math.ceil(this.bytes.length / this.cols));
+    this.renderShell();
   }
 
-  private render(): void {
-    const rows = buildHexRows(this.bytes, this.cols);
+  // Renders the static chrome (toolbar, header, scroll spacer, legend, status)
+  // once. Row content is rendered separately by renderVisibleRows() so that
+  // scrolling a multi-megabyte buffer only touches a small DOM window instead
+  // of materializing every row up front.
+  private renderShell(): void {
     const header = this.renderHeader();
-    const body = rows.map((row) => this.renderRow(row)).join('');
     const legend = this.renderLegend();
+    const spacerHeight = this.totalRows * ROW_HEIGHT;
 
     this.container.innerHTML = `
       <style>
@@ -34,9 +45,10 @@ export class HexViewer {
         .hex-toolbar { display: flex; align-items: center; justify-content: space-between; padding: var(--spacing-sm) var(--spacing-md); border-bottom: 1px solid var(--color-border); flex-wrap: wrap; gap: var(--spacing-sm); }
         .hex-toolbar-title { color: var(--color-fg-muted); font-size: 0.75rem; letter-spacing: 0.05em; }
         .hex-toolbar-actions { display: flex; gap: var(--spacing-xs); }
-        .hex-body { max-height: 520px; overflow: auto; outline: none; }
+        .hex-body { max-height: 520px; overflow: auto; outline: none; position: relative; }
+        .hex-scroll-spacer { position: relative; }
         .hex-header { display: flex; padding: var(--spacing-xs) var(--spacing-md); color: var(--color-fg-muted); font-size: 0.6875rem; letter-spacing: 0.05em; border-bottom: 1px solid var(--color-border); position: sticky; top: 0; background: var(--color-bg); z-index: 1; }
-        .hex-row { display: flex; align-items: baseline; padding: 0 var(--spacing-md); white-space: nowrap; }
+        .hex-row { display: flex; align-items: center; padding: 0 var(--spacing-md); white-space: nowrap; position: absolute; left: 0; right: 0; height: ${ROW_HEIGHT}px; box-sizing: border-box; }
         .hex-row:hover { background: var(--color-bg-elevated); }
         .hex-offset { width: 11ch; flex-shrink: 0; color: var(--color-fg-muted); }
         .hex-groups { display: flex; gap: 2.5ch; }
@@ -51,7 +63,7 @@ export class HexViewer {
       <div class="hex-viewer" role="region" aria-label="Hex viewer" tabindex="0">
         <div class="hex-toolbar">
           <span class="hex-toolbar-title">HEX VIEWER</span>
-          <span style="color: var(--color-fg-muted); font-size: 0.75rem;">${this.bytes.length} bytes</span>
+          <span style="color: var(--color-fg-muted); font-size: 0.75rem;">${this.bytes.length.toLocaleString()} bytes</span>
           <div class="hex-toolbar-actions">
             <button class="hex-goto-btn btn btn-ghost" aria-label="Go to offset" style="padding: 2px 8px; font-size: 0.75rem;">Go to offset…</button>
             <button class="hex-search-btn btn btn-ghost" aria-label="Find bytes" style="padding: 2px 8px; font-size: 0.75rem;">Find…</button>
@@ -59,8 +71,8 @@ export class HexViewer {
           </div>
         </div>
         ${header}
-        <div class="hex-viewer-body hex-body" role="grid" aria-label="Hex data" tabindex="0">
-          ${body}
+        <div class="hex-viewer-body hex-body" role="grid" aria-label="Hex data" aria-rowcount="${this.totalRows}" tabindex="0">
+          <div class="hex-scroll-spacer" style="height: ${spacerHeight}px;"></div>
         </div>
         ${legend}
         <div class="hex-viewer-status hex-status" aria-live="polite" aria-atomic="true">
@@ -70,6 +82,7 @@ export class HexViewer {
     `;
 
     this.attachEvents();
+    this.renderVisibleRows(true);
   }
 
   private getStatusText(): string {
@@ -94,7 +107,35 @@ export class HexViewer {
     </div>`;
   }
 
-  private renderRow(row: { offset: number; bytes: number[]; ascii: string }): string {
+  // Computes which rows should be visible given the body's current scroll
+  // position, then rewrites just the spacer's children to that window.
+  // `force` bypasses the "did the window actually change" check, used for
+  // the initial render and whenever selection/highlight state changes.
+  private renderVisibleRows(force = false): void {
+    const body = this.container.querySelector('.hex-viewer-body') as HTMLElement | null;
+    const spacer = this.container.querySelector('.hex-scroll-spacer') as HTMLElement | null;
+    if (!body || !spacer) return;
+
+    const viewportHeight = body.clientHeight || 520;
+    const scrollTop = body.scrollTop;
+    const firstVisible = Math.floor(scrollTop / ROW_HEIGHT);
+    const visibleCount = Math.ceil(viewportHeight / ROW_HEIGHT);
+    const startRow = Math.max(0, firstVisible - ROW_BUFFER);
+    const endRow = Math.min(this.totalRows, firstVisible + visibleCount + ROW_BUFFER);
+
+    if (!force && startRow === this.renderedStartRow && endRow === this.renderedEndRow) return;
+    this.renderedStartRow = startRow;
+    this.renderedEndRow = endRow;
+
+    const startByte = startRow * this.cols;
+    const endByte = Math.min(this.bytes.length, endRow * this.cols);
+    const slice = this.bytes.subarray(startByte, endByte);
+    const rows = buildHexRows(slice, this.cols).map((row) => ({ ...row, offset: row.offset + startByte }));
+
+    spacer.innerHTML = rows.map((row, i) => this.renderRow(row, startRow + i)).join('');
+  }
+
+  private renderRow(row: HexRow, rowIndex: number): string {
     const GROUP_SIZE = 8;
     const groups: string[] = [];
     for (let g = 0; g < row.bytes.length; g += GROUP_SIZE) {
@@ -134,7 +175,7 @@ export class HexViewer {
       asciiGroups.push(`<span class="hex-group">${cells}</span>`);
     }
 
-    return `<div role="row" class="hex-row">
+    return `<div role="row" aria-rowindex="${rowIndex + 1}" class="hex-row" style="top: ${rowIndex * ROW_HEIGHT}px;">
       <span role="rowheader" class="hex-offset">${toHex(row.offset, 8)}</span>
       <span role="group" class="hex-groups" aria-label="Hex values">${groups.join('')}</span>
       <span role="group" class="hex-ascii" aria-label="ASCII representation">
@@ -175,6 +216,7 @@ export class HexViewer {
 
     body?.addEventListener('keydown', (e) => this.handleKeyDown(e));
     body?.addEventListener('click', (e) => this.handleCellClick(e));
+    body?.addEventListener('scroll', () => this.handleScroll());
     root?.addEventListener('keydown', (e) => this.handleRootKeyDown(e));
     root?.addEventListener('focusin', () => this.updateFocusStyles(true));
     root?.addEventListener('focusout', () => this.updateFocusStyles(false));
@@ -184,6 +226,15 @@ export class HexViewer {
     copyBtn?.addEventListener('click', () => this.copySelection());
 
     this.updateCopyButtonState();
+  }
+
+  private handleScroll(): void {
+    if (this.scrollTicking) return;
+    this.scrollTicking = true;
+    requestAnimationFrame(() => {
+      this.renderVisibleRows();
+      this.scrollTicking = false;
+    });
   }
 
   private handleRootKeyDown(e: KeyboardEvent): void {
@@ -250,7 +301,6 @@ export class HexViewer {
 
     if (newOffset !== this.focusedOffset) {
       this.focusOffset(newOffset);
-      this.scrollToOffset(newOffset);
     }
   }
 
@@ -262,16 +312,20 @@ export class HexViewer {
     this.selectOffset(offset);
   }
 
+  // Moves keyboard focus to `offset`, scrolling it into view first (which
+  // also re-renders the row window around it) and only then locating and
+  // focusing its cell in the freshly-rendered DOM.
   private focusOffset(offset: number): void {
     this.focusedOffset = offset;
-    this.render();
+    this.scrollToOffset(offset);
+    this.renderVisibleRows(true);
     const newCell = this.container.querySelector(`.hex-cell[data-offset="${offset}"]`) as HTMLElement;
     newCell?.focus();
   }
 
   private selectOffset(offset: number): void {
     this.selectedOffset = offset;
-    this.updateSelectionDisplay(offset);
+    this.renderVisibleRows(true);
     this.updateCopyButtonState();
     const statusEl = this.container.querySelector('.hex-viewer-status');
     if (statusEl) statusEl.textContent = this.getStatusText();
@@ -282,14 +336,17 @@ export class HexViewer {
     this.updateCopyButtonState();
     const statusEl = this.container.querySelector('.hex-viewer-status');
     if (statusEl) statusEl.textContent = this.getStatusText();
-    this.render();
+    this.renderVisibleRows(true);
   }
 
   private scrollToOffset(offset: number): void {
     const body = this.container.querySelector('.hex-viewer-body') as HTMLElement;
-    const cell = this.container.querySelector(`.hex-cell[data-offset="${offset}"]`) as HTMLElement;
-    if (body && cell) {
-      cell.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    if (!body) return;
+    const row = Math.floor(offset / this.cols);
+    const rowTop = row * ROW_HEIGHT;
+    const viewportHeight = body.clientHeight || 520;
+    if (rowTop < body.scrollTop || rowTop + ROW_HEIGHT > body.scrollTop + viewportHeight) {
+      body.scrollTop = Math.max(0, rowTop - viewportHeight / 2);
     }
   }
 
@@ -308,13 +365,6 @@ export class HexViewer {
     }
   }
 
-  private updateSelectionDisplay(offset: number): void {
-    const statusEl = this.container.querySelector('.hex-viewer-status');
-    if (statusEl) {
-      statusEl.textContent = this.getStatusText();
-    }
-  }
-
   private showGotoDialog(): void {
     const input = prompt('Enter offset (hex or decimal):', '0x' + this.focusedOffset.toString(16).toUpperCase().padStart(8, '0'));
     if (input === null) return;
@@ -329,22 +379,28 @@ export class HexViewer {
       return;
     }
 
-    if (offset < 0 || offset >= this.bytes.length) {
+    if (offset < 0 || offset >= this.bytes.length || Number.isNaN(offset)) {
       alert(`Offset out of range (0 - ${this.bytes.length - 1})`);
       return;
     }
 
     this.focusOffset(offset);
-    this.scrollToOffset(offset);
   }
 
   private showSearchDialog(): void {
-    const input = prompt('Find bytes (hex, space-separated):', '');
-    if (input === null) return;
+    const input = prompt('Find bytes (hex, space-separated) or a text string:', '');
+    if (input === null || input.trim() === '') return;
 
-    const searchBytes = input.trim().split(/\s+/).map((b) => parseInt(b, 16));
+    const trimmed = input.trim();
+    const looksLikeHex = /^[0-9a-fA-F\s]+$/.test(trimmed) && trimmed.replace(/\s+/g, '').length % 2 === 0;
+    let searchBytes: number[];
+    if (looksLikeHex) {
+      searchBytes = trimmed.split(/\s+/).map((b) => parseInt(b, 16));
+    } else {
+      searchBytes = Array.from(trimmed).map((ch) => ch.charCodeAt(0));
+    }
     if (searchBytes.some(isNaN)) {
-      alert('Invalid hex bytes');
+      alert('Invalid search input');
       return;
     }
 
@@ -352,9 +408,8 @@ export class HexViewer {
     if (found >= 0) {
       this.focusOffset(found);
       this.selectOffset(found);
-      this.scrollToOffset(found);
     } else {
-      alert('Bytes not found');
+      alert('Not found');
     }
   }
 

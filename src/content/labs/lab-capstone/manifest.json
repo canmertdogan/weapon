@@ -3,12 +3,15 @@
   "title": "The Unknown Binary",
   "module": "final",
   "lesson": "u1",
-  "description": "Investigate an unknown binary and determine what it is and what it does.",
-  "difficulty": "Hard",
-  "estimatedTime": 45,
+  "description": "Investigate a full-size, ~1 MB unknown binary end to end: static triage, import capability mapping, anti-debug awareness, and a hand-decoded second-stage flag hidden the way lab-01 taught you to look. Nothing here is visible on the first screen — you'll need the hex viewer's Find and Go-to-offset tools, not eyeballing. Every skill from the course applies.",
+  "difficulty": "Extreme",
+  "estimatedTime": 60,
   "prerequisites": [
     "All prior modules (start through anti-re)",
-    "Full investigation workflow: strings \u2192 imports \u2192 PE structure \u2192 behavior \u2192 verdict",
+    "Full investigation workflow: strings → imports → PE structure → behavior → verdict",
+    "DOS stub steganography (lab-01)",
+    "Bitwise XOR encoding/decoding (a6-shift-rotate)",
+    "Instruction tracing (mov/xor/cmp/jne)",
     "YARA rule writing",
     "IOC extraction and reporting",
     "MITRE ATT&CK mapping"
@@ -17,7 +20,21 @@
     "format": "PE",
     "name": "unknown.exe",
     "file": "/binaries/lab-capstone.hex",
-    "bytes": 2560
+    "bytes": 1046016
+  },
+  "code": {
+    "labels": { "loop": 2, "done": 7 },
+    "instructions": [
+      { "address": 0, "op": "mov", "args": ["rsi", "0x7b"] },
+      { "address": 1, "op": "mov", "args": ["rcx", "23"] },
+      { "address": 2, "op": "mov", "args": ["al", "[rsi]"] },
+      { "address": 3, "op": "xor", "args": ["al", "0x5a"] },
+      { "address": 4, "op": "mov", "args": ["[rsi]", "al"] },
+      { "address": 5, "op": "inc", "args": ["rsi"] },
+      { "address": 6, "op": "dec", "args": ["rcx"] },
+      { "address": 7, "op": "jnz", "args": ["loop"] },
+      { "address": 8, "op": "ret", "args": [] }
+    ]
   },
   "questions": [
     {
@@ -41,29 +58,59 @@
     {
       "id": "q4",
       "type": "string",
+      "prompt": "Which imported API indicates the binary checks whether it's being debugged before it runs its payload?",
+      "answer": "isdebuggerpresent"
+    },
+    {
+      "id": "q5",
+      "type": "string",
       "prompt": "Which persistence mechanism does it use? (two words)",
       "answer": "run key"
     },
     {
-      "id": "q5",
+      "id": "q6",
+      "type": "string",
+      "prompt": "The disassembly reads a byte from [rsi], starting at rsi=0x7B. Per lab-01's lesson, what region of the file is that offset in?",
+      "answer": "dos stub"
+    },
+    {
+      "id": "q7",
+      "type": "string",
+      "prompt": "The loop XORs each of the 23 bytes at [rsi] with an immediate and writes it back in place. What is that key, in hex?",
+      "answer": "0x5a"
+    },
+    {
+      "id": "q8",
+      "type": "string",
+      "prompt": "Decode the 23 bytes at file offset 0x7B with that key. What string do you get? (format: WEAPON{...})",
+      "answer": "weapon{full_kill_chain}"
+    },
+    {
+      "id": "q9",
       "type": "string",
       "prompt": "What is the overall verdict? (three words, e.g. remote access trojan)",
       "answer": "remote access trojan"
     }
   ],
   "hints": [
-    "Start with strings: a domain, a mutex, a registry path, a dropped file.",
-    "The imports cluster into three capabilities: network, injection, persistence.",
-    "Network + injection + persistence together describe an implant, not a single-purpose tool."
+    "This file is over a megabyte. Don't scroll — parse the headers first, then use the hex viewer's Find (F) to jump straight to what you're looking for. That's what a real analyst does with strings/grep on a sample this size, too.",
+    "The four IOC strings (domain, mutex, registry path, dropped-file path) are buried far apart from each other and from the headers — none of them are anywhere near the start of the file.",
+    "The imports cluster into four capabilities: network, injection, persistence, and anti-analysis.",
+    "The disassembly's starting address for [rsi], 0x7B, isn't inside any section — it's before the PE header even begins, in the first few hundred bytes of the file. Where else in the file did an earlier lab teach you to look?",
+    "cmp isn't the only way to check a value: xor-ing a byte with the same key twice returns the original byte. That's exactly what encode and decode are here — the same operation.",
+    "Network + injection + persistence + anti-debugging + a self-decoding second flag together describe a fully-featured implant, not a single-purpose tool."
   ],
-  "methodology": "## Investigation Methodology \u2014 The RE Loop\n\n### Phase 1: Static Triage (5 min)\n- **File info**: Hash (MD5/SHA256), size, type, architecture\n- **PE headers**: Sections, entry point, timestamps, characteristics\n- **Strings**: `strings -a -el` \u2014 extract ASCII + UTF-16\n- **Imports/Exports**: Capability fingerprint\n- **Resources**: Icons, manifests, embedded files\n\n### Phase 2: Capability Mapping (10 min)\nCluster imports into ATT&CK techniques:\n\n| Cluster | APIs | Technique |\n|---------|------|-----------|\n| **Network** | `InternetOpen`, `InternetConnect`, `HttpSendRequest` | T1071.001 |\n| **Injection** | `VirtualAllocEx`, `WriteProcessMemory`, `CreateRemoteThread` | T1055.001 |\n| **Persistence** | `RegSetValueEx`, `Run` key path | T1547.001 |\n| **Defense Evasion** | `IsDebuggerPresent`, `VirtualProtectEx` (RWX) | T1622, T1027 |\n| **Discovery** | `GetSystemInfo`, `GetVersionEx` | T1082 |\n\n### Phase 3: Behavioral Reconstruction (15 min)\n1. **Entry Point Analysis**: What runs first? TLS callbacks? Packers?\n2. **Main Flow**: Decompile entry \u2192 trace to `main`/`WinMain`\n3. **Key Functions**: Identify:\n   - C2 communication loop\n   - Injection routine\n   - Persistence installer\n   - Anti-analysis checks\n4. **Data Flow**: Trace strings \u2192 variables \u2192 API arguments\n\n### Phase 4: IOC Extraction (10 min)\n| Type | Value | Context |\n|------|-------|---------|\n| **Network** | `deep-space-c2.net:443/beacon.php` | C2 endpoint |\n| **Host** | `Global\\capstone_mutex_7` | Mutex |\n| **Persistence** | `HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run` | Run key |\n| **File** | `%APPDATA%\\winlogon.exe` | Dropped payload |\n| **Process** | `winlogon.exe` (masqueraded) | Process name |\n| **Registry** | Run key value name/data | Persistence artifact |\n\n### Phase 5: Attribution & Reporting (5 min)\n- **Malware Family**: Compare IOCs to known families (VT, Malpedia)\n- **ATT&CK Mapping**: Tag each capability\n- **Threat Actor**: If infrastructure overlaps known campaigns\n- **Verdict**: Classify (RAT, loader, ransomware, wiper, etc.)\n- **Report**: Executive summary + technical details + IOCs + mitigations",
+  "methodology": "## Investigation Methodology — The RE Loop\n\nThis sample is roughly **1 MB** — around 65,000 hex-viewer rows. That's the point: nothing here rewards scrolling. Every real reverse engineer's first move on an unfamiliar sample this size is the same one you have available here — parse the headers to know *what* to look for, then jump straight to it with `strings`/`grep` (or, in the built-in viewer, **Find** — press `F`) instead of reading the file top to bottom.\n\n### Phase 1: Static Triage (5 min)\n- **File info**: Hash (MD5/SHA256), size (~1 MB — large enough that manual scanning isn't viable), type, architecture\n- **PE headers**: Sections, entry point, timestamps, characteristics — the header only occupies the first ~1 KB, the rest is section content\n- **Strings**: `strings -a -el` — extract ASCII + UTF-16 from every section, *and* the DOS stub (lab-01's lesson: `strings` with default settings skips it, and it's not a mapped section, so ASCII scanners often miss what's hidden there). On a real sample you'd pipe this through `grep` for anything domain/registry/path-shaped; here, the hex viewer's **Find** does the same job against known substrings once you've decided what to search for.\n- **Imports/Exports**: Capability fingerprint\n- **Resources**: Icons, manifests, embedded files\n\n### Phase 2: Capability Mapping (10 min)\nCluster imports into ATT&CK techniques:\n\n| Cluster | APIs | Technique |\n|---------|------|-----------|\n| **Network** | `InternetOpenW`, `InternetConnectW`, `HttpSendRequestW` | T1071.001 |\n| **Injection** | `VirtualAllocEx`, `CreateRemoteThread` | T1055 |\n| **Persistence** | `RegSetValueExW`, `Run` key path | T1547.001 |\n| **Defense Evasion** | `IsDebuggerPresent` | T1622 |\n\nA sample with all four clusters present is a fully-featured implant, not a proof-of-concept.\n\n### Phase 3: The Disassembly — A Self-Decoding Routine (15 min)\nThe binary ships a short loop instead of a plain second string:\n```\n0: mov rsi, 0x7B     ; rsi = file offset, not a section RVA\n1: mov rcx, 23       ; 23 bytes to process\nloop:\n2: mov al, [rsi]     ; read the encoded byte\n3: xor al, 0x5A      ; XOR with a single-byte key\n4: mov [rsi], al      ; write the decoded byte back\n5: inc rsi\n6: dec rcx\n7: jnz loop\n8: ret\n```\n- **XOR is self-inverse**: `(x XOR k) XOR k == x`. Whatever bytes live at `[rsi]` before this loop runs are the *encoded* form; after it runs, they're plaintext. You can do the same transform by hand, byte by byte, without a debugger.\n- **Address `0x7B` is not a section RVA** — cross-reference it against the DOS header layout from lesson F1 and lab-01: `e_lfanew` (offset `0x3C`) points to the real PE signature, and everything between `0x40` and `e_lfanew` is DOS stub padding. `0x7B` falls in that range. Unlike the other IOCs, this one is near the front of the file — use **Go to offset** (`G`) to jump straight to `0x7B`.\n- Read the 23 raw bytes at file offset `0x7B` from the hex viewer, XOR each one with `0x5A` by hand (or in a scratch script), and you have the second flag.\n\n### Phase 4: IOC Extraction (10 min)\nEach of these strings is planted deep inside `.data`, spread apart from each other and from anything else recognizable — search for each one individually with **Find**:\n\n| Type | Value | Context |\n|------|-------|---------|\n| **Network** | `deep-space-c2.net:443/beacon.php` | C2 endpoint |\n| **Host** | `Global\\capstone_mutex_7` | Mutex |\n| **Persistence** | `HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run` | Run key |\n| **File** | `%APPDATA%\\winlogon.exe` | Dropped payload |\n| **Process** | `winlogon.exe` (masqueraded) | Process name |\n| **Anti-Analysis** | `IsDebuggerPresent` check | Defense evasion |\n\n### Phase 5: Attribution & Reporting (10 min)\n- **Malware Family**: Compare IOCs to known families (VT, Malpedia)\n- **ATT&CK Mapping**: Tag each capability, including the anti-debug check and the DOS-stub steganography technique itself (T1027, obfuscated files/information)\n- **Verdict**: Classify (RAT, loader, ransomware, wiper, etc.)\n- **Report**: Executive summary + technical details + IOCs + mitigations",
   "commonPitfalls": [
-    "Stopping at strings \u2014 missing dynamically resolved imports",
-    "Not checking for packers \u2014 UPX, custom stubs hide imports/code",
-    "Missing TLS callbacks \u2014 code runs before entry point",
-    "Overlooking resources \u2014 embedded payloads, configs, scripts",
-    "Not verifying dropped file \u2014 hash it, analyze it separately",
-    "Rushing to verdict without full capability picture"
+    "Trying to scroll through a ~1 MB file byte by byte instead of parsing the headers first and using Find/Go-to-offset",
+    "Stopping at strings — missing dynamically resolved imports",
+    "Not checking for packers — UPX, custom stubs hide imports/code",
+    "Missing the DOS stub entirely — most string scanners default to mapped sections only",
+    "Treating `[rsi]` as a section-relative RVA instead of the flat file offset it actually is here",
+    "Applying the XOR key to the wrong byte range (it's exactly 23 bytes, not the whole stub)",
+    "Overlooking `IsDebuggerPresent` — a single anti-analysis import is still a capability, even with no visible branch logic around it in this excerpt",
+    "Not verifying dropped file — hash it, analyze it separately",
+    "Rushing to verdict without the full capability picture (network + injection + persistence + anti-debug + hidden payload)"
   ],
   "tools": [
     "Ghidra (full suite: disasm, decompiler, graphs, scripts)",
@@ -71,24 +118,28 @@
     "FLOSS (obfuscated strings)",
     "YARA (rule writing, scanning)",
     "x64dbg (dynamic verification)",
+    "A scratch Python/CyberChef XOR script (for the hand-decode step)",
     "VirusTotal / MalwareBazaar (intel pivot)",
     "MITRE ATT&CK Navigator (mapping)",
-    "CAPA (Mandiant) \u2014 automated capability detection"
+    "CAPA (Mandiant) — automated capability detection"
   ],
   "references": [
     "All course modules",
+    "Lab 01: Hidden String Hunt — DOS stub steganography",
+    "Lesson A6: Bit Tricks — XOR and self-inverse operations",
     "MITRE ATT&CK Enterprise Matrix",
     "Mandiant CAPA documentation",
     "Malware Analysis: Investigation Loop methodology",
     "SANS FOR610: Reverse Engineering Malware"
   ],
   "extensions": [
-    "Write a comprehensive YARA rule family for this malware",
-    "Analyze the dropped `winlogon.exe` \u2014 is it the same or different?",
+    "Write a comprehensive YARA rule family for this malware, including a rule that matches the XOR-encoded second stage",
+    "Analyze the dropped `winlogon.exe` — is it the same or different?",
     "Map to MITRE ATT&CK and create a Navigator layer",
     "Research: How would you detect this in memory (Volatility)?",
     "Build a Sigma rule for the persistence registry write",
-    "Simulate: How would this behave in a sandbox? What would it hide?"
+    "Write a script that automatically finds and XOR-brute-forces short encoded regions in a DOS stub",
+    "Simulate: How would this behave in a sandbox? Would `IsDebuggerPresent` returning true change its behavior, and how would you patch around that?"
   ],
-  "solution": "## The Unknown Binary \u2014 Verdict\n\nThe full profile, assembled with the investigation loop:\n\n**Strings**\n- C2 domain: `deep-space-c2.net`\n- Mutex: `Global\\capstone_mutex_7`\n- Persistence: `Software\\Microsoft\\Windows\\CurrentVersion\\Run`\n- Dropped file: `%APPDATA%\\winlogon.exe`\n\n**Imports (capabilities)**\n- Network: `InternetOpenW` / `InternetConnectW` / `HttpSendRequestW` (HTTP C2)\n- Injection: `VirtualAllocEx` / `CreateRemoteThread` (run code in other processes)\n- Persistence: `RegSetValueExW` (Run key)\n\n**Narrative**: drops `winlogon.exe` (masquerading as the legitimate process), writes a Run key, guards itself with a mutex, and phones home over HTTP.\n\n**Verdict**: a **remote access trojan** (RAT).\n\n**IOCs**: `deep-space-c2.net`, `Global\\capstone_mutex_7`, the Run-key value, `%APPDATA%\\winlogon.exe`, and the sample hash."
+  "solution": "## The Unknown Binary — Verdict\n\nThe full profile, assembled with the investigation loop, from a ~1 MB sample where none of this sits near the start of the file:\n\n**Strings (`.data`, found via Find — not visible on the first screen)**\n- C2 domain: `deep-space-c2.net` — file offset `0x6E240`\n- Mutex: `Global\\capstone_mutex_7` — file offset `0x97A50`\n- Persistence: `Software\\Microsoft\\Windows\\CurrentVersion\\Run` — file offset `0xC3970`\n- Dropped file: `%APPDATA%\\winlogon.exe` — file offset `0xED180`\n\n**Imports (capabilities)**\n- Network: `InternetOpenW` / `InternetConnectW` / `HttpSendRequestW` (HTTP C2)\n- Injection: `VirtualAllocEx` / `CreateRemoteThread` (run code in other processes)\n- Persistence: `RegSetValueExW` (Run key)\n- Anti-analysis: `IsDebuggerPresent` (checks for a debugger before acting)\n\n**The hidden second flag**\nThe disassembly shows a loop reading 23 bytes starting at `rsi = 0x7B`, XOR-ing each with `0x5A`, and writing it back in place. `0x7B` sits in the DOS stub — the same hiding spot lab-01 taught, except this time the payload isn't plaintext, it's encoded, so a plain ASCII scan of the hex dump won't reveal it. Reading the 23 raw bytes at file offset `0x7B` and XOR-ing each with `0x5A` by hand decodes to:\n\n```\nWEAPON{full_kill_chain}\n```\n\n**Narrative**: drops `winlogon.exe` (masquerading as the legitimate process), writes a Run key, guards itself with a mutex, checks for a debugger before running, phones home over HTTP, and carries a second-stage payload hidden with a technique straight out of lesson one of the course.\n\n**Verdict**: a **remote access trojan** (RAT).\n\n**IOCs**: `deep-space-c2.net`, `Global\\capstone_mutex_7`, the Run-key value, `%APPDATA%\\winlogon.exe`, the `IsDebuggerPresent` check, and the sample hash."
 }

@@ -22,6 +22,7 @@ const difficultyBadge: Record<string, string> = {
   Easy: 'badge-easy',
   Medium: 'badge-medium',
   Hard: 'badge-hard',
+  Extreme: 'badge-extreme',
 };
 ---
 
@@ -56,6 +57,7 @@ const difficultyBadge: Record<string, string> = {
           id="lab-hex"
           data-binary-url={binaryUrl}
           data-binary-hex={lab.binary.hex || ''}
+          data-binary-bytes={lab.binary.bytes ?? ''}
           class="mb-4"
         ></div>
       </section>
@@ -254,13 +256,15 @@ const difficultyBadge: Record<string, string> = {
     if (!hexEl) return;
     const url = hexEl.dataset.binaryUrl || '';
     const inlineHex = hexEl.dataset.binaryHex || '';
+    const expectedBytes = hexEl.dataset.binaryBytes ? parseInt(hexEl.dataset.binaryBytes, 10) : undefined;
     if (!url && !inlineHex) return;
 
     try {
       let data: string;
       if (url) {
-        // Try cache first
-        const cached = await getCachedBinary(url);
+        // Try cache first, but ignore a cached copy that no longer matches
+        // the manifest's declared size (the binary was regenerated since).
+        const cached = await getCachedBinary(url, expectedBytes);
         if (cached) {
           data = cached;
         } else {

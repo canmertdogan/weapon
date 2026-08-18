@@ -1,3 +1,12 @@
+// Maps the ASCII code of a hex digit to its nibble value; invalid chars map to 0xFF.
+const HEX_NIBBLE = (() => {
+  const lut = new Uint8Array(128).fill(0xff);
+  for (let i = 0; i <= 9; i++) lut[48 + i] = i; // '0'-'9'
+  for (let i = 0; i <= 5; i++) lut[65 + i] = 10 + i; // 'A'-'F'
+  for (let i = 0; i <= 5; i++) lut[97 + i] = 10 + i; // 'a'-'f'
+  return lut;
+})();
+
 export function hexToBytes(hex: string): Uint8Array {
   const clean = hex.replace(/\s+/g, '');
   if (clean.length % 2 !== 0) {
@@ -5,7 +14,12 @@ export function hexToBytes(hex: string): Uint8Array {
   }
   const bytes = new Uint8Array(clean.length / 2);
   for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(clean.substring(i * 2, i * 2 + 2), 16);
+    const hi = HEX_NIBBLE[clean.charCodeAt(i * 2)];
+    const lo = HEX_NIBBLE[clean.charCodeAt(i * 2 + 1)];
+    if (hi === 0xff || lo === 0xff) {
+      throw new Error(`Invalid hex string: bad digit at position ${i * 2}`);
+    }
+    bytes[i] = (hi << 4) | lo;
   }
   return bytes;
 }

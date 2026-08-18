@@ -60,7 +60,10 @@ export async function cacheBinary(url: string, data: string): Promise<void> {
   });
 }
 
-export async function getCachedBinary(url: string): Promise<string | null> {
+// `expectedBytes`, when given, invalidates a cached entry whose stored data
+// no longer matches the manifest's declared size — the only signal we have
+// that a binary at this URL was regenerated since it was last cached.
+export async function getCachedBinary(url: string, expectedBytes?: number): Promise<string | null> {
   const db = await getDB();
   const tx = db.transaction(BINARY_STORE, 'readonly');
   const store = tx.objectStore(BINARY_STORE);
@@ -68,11 +71,15 @@ export async function getCachedBinary(url: string): Promise<string | null> {
     const req = store.get(url);
     req.onsuccess = () => {
       const entry = req.result as BinaryCacheEntry | undefined;
-      if (entry) {
-        resolve(entry.data);
-      } else {
+      if (!entry) {
         resolve(null);
+        return;
       }
+      if (expectedBytes !== undefined && entry.data.length / 2 !== expectedBytes) {
+        resolve(null);
+        return;
+      }
+      resolve(entry.data);
     };
     req.onerror = () => reject(req.error);
   });
