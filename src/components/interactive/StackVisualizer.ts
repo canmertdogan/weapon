@@ -162,7 +162,7 @@ export class StackVisualizer {
         return `<div role="listitem" tabindex="${isFocused ? '0' : '-1'}" data-stack-index="${index}"
               style="display: flex; align-items: center; gap: var(--spacing-sm); padding: 4px 8px; border: 1px solid ${borderColor}; border-radius: 4px; margin-bottom: 4px; min-width: fit-content; ${entry.active ? 'background: var(--color-stack-active)11;' : ''} ${isFocused ? 'outline: 2px solid var(--color-accent); outline-offset: -2px;' : ''}"
               aria-selected="${isFocused}" aria-label="${marker || `Address 0x${entry.address.toString(16).toUpperCase().padStart(8, '0')}`}: value 0x${entry.value.toString(16).toUpperCase().padStart(16, '0')}${entry.label ? `, ${entry.label}` : ''}">
-          <span style="width: 80px; flex-shrink: 0; color: ${marker ? 'var(--color-stack-active)' : 'var(--color-fg-muted)'}; font-weight: ${marker ? 600 : 400}; font-family: var(--font-mono);">${marker || '0x' + entry.address.toString(16).toUpperCase().padStart(8, '0')}</span>
+          <span style="min-width: 96px; flex-shrink: 0; white-space: nowrap; color: ${marker ? 'var(--color-stack-active)' : 'var(--color-fg-muted)'}; font-weight: ${marker ? 600 : 400}; font-family: var(--font-mono);">${marker || '0x' + entry.address.toString(16).toUpperCase().padStart(8, '0')}</span>
           <span style="flex-shrink: 0; font-family: var(--font-mono);">0x${entry.value.toString(16).toUpperCase().padStart(16, '0')}</span>
           ${entry.label ? `<span style="color: var(--color-fg-muted); font-size: 0.6875rem; white-space: nowrap;">${entry.label}</span>` : ''}
         </div>`;
