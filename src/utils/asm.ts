@@ -396,6 +396,171 @@ export function execute(state: CPUState, line: string): StepResult {
       }
       break;
     }
+    case 'shl': case 'sal': {
+      const dst = o[0];
+      const a = readRegister(state, dst);
+      const width = registerBitWidth(dst);
+      const countMask = width > 32 ? 0x3fn : 0x1fn;
+      const count = (isRegister(o[1]) ? readRegister(state, o[1]) : parseImmediate(o[1])) & countMask;
+      const mask = (1n << BigInt(width)) - 1n;
+      const v = count === 0n ? a : (a << count) & mask;
+      writeRegister(state, dst, v);
+      if (count > 0n) {
+        const lastOutBit = (width - Number(count) >= 0 && width - Number(count) < width)
+          ? (a >> BigInt(width - Number(count))) & 1n
+          : 0n;
+        state.flags.CF = lastOutBit === 1n;
+        if (count === 1n) state.flags.OF = ((v >> BigInt(width - 1)) & 1n) !== (state.flags.CF ? 1n : 0n);
+        setZF(state, v, width);
+        setSF(state, v, width);
+        setPF(state, v);
+        changedFlags.add('CF'); changedFlags.add('OF'); changedFlags.add('ZF'); changedFlags.add('SF'); changedFlags.add('PF');
+      }
+      changedRegs.add(REGISTER_ALIASES[dst]);
+      break;
+    }
+    case 'shr': {
+      const dst = o[0];
+      const a = readRegister(state, dst);
+      const width = registerBitWidth(dst);
+      const countMask = width > 32 ? 0x3fn : 0x1fn;
+      const count = (isRegister(o[1]) ? readRegister(state, o[1]) : parseImmediate(o[1])) & countMask;
+      const mask = (1n << BigInt(width)) - 1n;
+      const v = count === 0n ? a : (a & mask) >> count;
+      writeRegister(state, dst, v);
+      if (count > 0n) {
+        const lastOutBit = count <= BigInt(width) ? (a >> (count - 1n)) & 1n : 0n;
+        state.flags.CF = lastOutBit === 1n;
+        if (count === 1n) state.flags.OF = ((a >> BigInt(width - 1)) & 1n) === 1n;
+        setZF(state, v, width);
+        setSF(state, v, width);
+        setPF(state, v);
+        changedFlags.add('CF'); changedFlags.add('OF'); changedFlags.add('ZF'); changedFlags.add('SF'); changedFlags.add('PF');
+      }
+      changedRegs.add(REGISTER_ALIASES[dst]);
+      break;
+    }
+    case 'sar': {
+      const dst = o[0];
+      const a = readRegister(state, dst);
+      const width = registerBitWidth(dst);
+      const countMask = width > 32 ? 0x3fn : 0x1fn;
+      const count = (isRegister(o[1]) ? readRegister(state, o[1]) : parseImmediate(o[1])) & countMask;
+      const mask = (1n << BigInt(width)) - 1n;
+      const signBit = (a >> BigInt(width - 1)) & 1n;
+      let v: bigint;
+      if (count === 0n) {
+        v = a;
+      } else if (count >= BigInt(width)) {
+        v = signBit === 1n ? mask : 0n;
+      } else {
+        v = a >> count;
+        if (signBit === 1n) {
+          const signExtend = mask & ~((1n << (BigInt(width) - count)) - 1n);
+          v |= signExtend;
+        }
+      }
+      writeRegister(state, dst, v);
+      if (count > 0n) {
+        const lastOutBit = count <= BigInt(width) ? (a >> (count - 1n)) & 1n : signBit;
+        state.flags.CF = lastOutBit === 1n;
+        if (count === 1n) state.flags.OF = false;
+        setZF(state, v, width);
+        setSF(state, v, width);
+        setPF(state, v);
+        changedFlags.add('CF'); changedFlags.add('OF'); changedFlags.add('ZF'); changedFlags.add('SF'); changedFlags.add('PF');
+      }
+      changedRegs.add(REGISTER_ALIASES[dst]);
+      break;
+    }
+    case 'rol': {
+      const dst = o[0];
+      const a = readRegister(state, dst);
+      const width = registerBitWidth(dst);
+      const countMask = width > 32 ? 0x3fn : 0x1fn;
+      const rawCount = (isRegister(o[1]) ? readRegister(state, o[1]) : parseImmediate(o[1])) & countMask;
+      const count = rawCount % BigInt(width);
+      const mask = (1n << BigInt(width)) - 1n;
+      const v = count === 0n ? a : (((a << count) | (a >> (BigInt(width) - count))) & mask);
+      writeRegister(state, dst, v);
+      if (rawCount > 0n) {
+        state.flags.CF = (v & 1n) === 1n;
+        if (rawCount === 1n) state.flags.OF = ((v >> BigInt(width - 1)) & 1n) !== (v & 1n);
+        changedFlags.add('CF'); changedFlags.add('OF');
+      }
+      changedRegs.add(REGISTER_ALIASES[dst]);
+      break;
+    }
+    case 'ror': {
+      const dst = o[0];
+      const a = readRegister(state, dst);
+      const width = registerBitWidth(dst);
+      const countMask = width > 32 ? 0x3fn : 0x1fn;
+      const rawCount = (isRegister(o[1]) ? readRegister(state, o[1]) : parseImmediate(o[1])) & countMask;
+      const count = rawCount % BigInt(width);
+      const mask = (1n << BigInt(width)) - 1n;
+      const v = count === 0n ? a : (((a >> count) | (a << (BigInt(width) - count))) & mask);
+      writeRegister(state, dst, v);
+      if (rawCount > 0n) {
+        state.flags.CF = ((v >> BigInt(width - 1)) & 1n) === 1n;
+        if (rawCount === 1n) state.flags.OF = ((v >> BigInt(width - 1)) & 1n) !== ((v >> BigInt(width - 2)) & 1n);
+        changedFlags.add('CF'); changedFlags.add('OF');
+      }
+      changedRegs.add(REGISTER_ALIASES[dst]);
+      break;
+    }
+    case 'bsf': {
+      const dst = o[0];
+      const src = readRegister(state, o[1]);
+      const width = registerBitWidth(o[1]);
+      if (src === 0n) {
+        state.flags.ZF = true;
+      } else {
+        let idx = 0;
+        let v = src;
+        while ((v & 1n) === 0n) { v >>= 1n; idx++; }
+        writeRegister(state, dst, BigInt(idx));
+        state.flags.ZF = false;
+        changedRegs.add(REGISTER_ALIASES[dst]);
+      }
+      changedFlags.add('ZF');
+      break;
+    }
+    case 'bsr': {
+      const dst = o[0];
+      const src = readRegister(state, o[1]);
+      const width = registerBitWidth(o[1]);
+      if (src === 0n) {
+        state.flags.ZF = true;
+      } else {
+        let idx = width - 1;
+        while (idx > 0 && ((src >> BigInt(idx)) & 1n) === 0n) idx--;
+        writeRegister(state, dst, BigInt(idx));
+        state.flags.ZF = false;
+        changedRegs.add(REGISTER_ALIASES[dst]);
+      }
+      changedFlags.add('ZF');
+      break;
+    }
+    case 'popcnt': {
+      const dst = o[0];
+      const src = readRegister(state, o[1]);
+      const width = registerBitWidth(o[1]);
+      let count = 0n;
+      for (let i = 0; i < width; i++) {
+        if ((src >> BigInt(i)) & 1n) count++;
+      }
+      writeRegister(state, dst, count);
+      state.flags.CF = false;
+      state.flags.OF = false;
+      state.flags.SF = false;
+      state.flags.AF = false;
+      state.flags.PF = false;
+      state.flags.ZF = count === 0n;
+      changedRegs.add(REGISTER_ALIASES[dst]);
+      changedFlags.add('CF'); changedFlags.add('OF'); changedFlags.add('SF'); changedFlags.add('AF'); changedFlags.add('PF'); changedFlags.add('ZF');
+      break;
+    }
     case 'nop':
       break;
     case 'ret':

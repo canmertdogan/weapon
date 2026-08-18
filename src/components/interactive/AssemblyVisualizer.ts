@@ -86,6 +86,15 @@ export class AssemblyVisualizer {
     const flagsHtml = this.renderFlags();
 
     this.container.innerHTML = `
+      <style>
+        .asm-visualizer .asm-registers-panel, .asm-visualizer .asm-side-panel { min-width: 0; }
+        @media (max-width: 640px) {
+          .asm-visualizer .asm-columns { grid-template-columns: 1fr !important; }
+          .asm-visualizer .asm-registers-panel { border-right: none !important; border-bottom: 1px solid var(--color-border); }
+          .asm-visualizer .asm-side-panel { border-left: none !important; }
+          .asm-visualizer .asm-regs-grid { grid-template-columns: 1fr !important; }
+        }
+      </style>
       <div class="asm-visualizer" role="region" aria-label="${this.title}" tabindex="0"
            style="font-family: var(--font-mono); background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden;">
         <div class="asm-toolbar" style="display: flex; align-items: center; justify-content: space-between; padding: var(--spacing-sm) var(--spacing-md); border-bottom: 1px solid var(--color-border); flex-wrap: wrap; gap: var(--spacing-sm);">
@@ -95,11 +104,11 @@ export class AssemblyVisualizer {
             <button class="btn btn-primary asm-step" aria-label="${this.stepIndex >= this.instructions.length - 1 ? 'Restart simulation' : 'Execute next instruction'}" style="padding: 4px 12px; font-size: 0.75rem;">${this.stepIndex >= this.instructions.length - 1 ? 'Restart' : 'Step'}</button>
           </div>
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 240px; gap: 0;">
+        <div class="asm-columns" style="display: grid; grid-template-columns: 1fr 240px; gap: 0;">
           <div class="asm-registers-panel" role="region" aria-label="Registers" tabindex="0"
                style="outline: none; border-right: 1px solid var(--color-border);">
             <div style="padding: var(--spacing-xs) var(--spacing-md); color: var(--color-fg-muted); font-size: 0.6875rem; letter-spacing: 0.05em; border-bottom: 1px solid var(--color-border);">REGISTERS</div>
-            <div role="list" aria-label="General purpose registers" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px; padding: var(--spacing-sm);">
+            <div role="list" aria-label="General purpose registers" class="asm-regs-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px; padding: var(--spacing-sm);">
               ${regsHtml}
             </div>
           </div>

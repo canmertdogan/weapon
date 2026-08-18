@@ -83,7 +83,7 @@ const interactive = getInteractiveProps(lesson.id, lesson.interactive);
               <AssemblyVisualizerIsland {...interactive.props} />
             )}
             {interactive.component === 'StackVisualizerIsland' && (
-              <StackVisualizerIsland {...interactive.props} />
+              <StackVisualizerIsland {...interactive.props} lessonId={lesson.id} />
             )}
             {interactive.component === 'InstructionPlaygroundIsland' && (
               <InstructionPlaygroundIsland {...interactive.props} />
@@ -266,8 +266,8 @@ const interactive = getInteractiveProps(lesson.id, lesson.interactive);
     margin: 1rem 0;
   }
   .prose-content :global(pre code) { background: transparent; padding: 0; }
-  .prose-content :global(table) { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.875rem; }
-  .prose-content :global(th), .prose-content :global(td) { border: 1px solid var(--color-border); padding: 0.5rem 0.75rem; text-align: left; }
+  .prose-content :global(table) { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.875rem; }
+  .prose-content :global(th), .prose-content :global(td) { border: 1px solid var(--color-border); padding: 0.5rem 0.75rem; text-align: left; overflow-wrap: anywhere; }
   .prose-content :global(th) { background: var(--color-bg-elevated); }
   .prose-content :global(blockquote) {
     border-left: 3px solid var(--color-accent);

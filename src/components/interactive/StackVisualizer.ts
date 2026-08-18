@@ -90,6 +90,15 @@ export class StackVisualizer {
     const stackHtml = this.renderStack();
 
     this.container.innerHTML = `
+      <style>
+        .stack-visualizer .stack-main-panel, .stack-visualizer .stack-side-panel { min-width: 0; }
+        .stack-visualizer .stack-list { overflow-x: auto; }
+        @media (max-width: 640px) {
+          .stack-visualizer .stack-columns { grid-template-columns: 1fr !important; }
+          .stack-visualizer .stack-main-panel { border-right: none !important; border-bottom: 1px solid var(--color-border); }
+          .stack-visualizer .stack-side-panel { border-left: none !important; }
+        }
+      </style>
       <div class="stack-visualizer" role="region" aria-label="${this.title}" tabindex="0"
            style="font-family: var(--font-mono); background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden;">
         <div class="stack-toolbar" style="display: flex; align-items: center; justify-content: space-between; padding: var(--spacing-sm) var(--spacing-md); border-bottom: 1px solid var(--color-border); flex-wrap: wrap; gap: var(--spacing-sm);">
@@ -99,7 +108,7 @@ export class StackVisualizer {
             <button class="btn btn-primary stack-step" aria-label="${this.stepIndex >= this.instructions.length - 1 ? 'Restart simulation' : 'Execute next instruction'}" style="padding: 4px 12px; font-size: 0.75rem;">${this.stepIndex >= this.instructions.length - 1 ? 'Restart' : 'Step'}</button>
           </div>
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 260px; gap: 0;">
+        <div class="stack-columns" style="display: grid; grid-template-columns: 1fr 260px; gap: 0;">
           <div class="stack-main-panel" role="region" aria-label="Stack memory" tabindex="0"
                style="outline: none; padding: var(--spacing-sm); border-right: 1px solid var(--color-border);">
             <div style="color: var(--color-fg-muted); font-size: 0.6875rem; letter-spacing: 0.05em; margin-bottom: var(--spacing-sm);">STACK (grows downward → higher addresses at top)</div>
@@ -151,11 +160,11 @@ export class StackVisualizer {
         const borderColor = entry.active ? 'var(--color-stack-active)' : 'var(--color-border)';
         const isFocused = this.focusedIndex === index;
         return `<div role="listitem" tabindex="${isFocused ? '0' : '-1'}" data-stack-index="${index}"
-              style="display: flex; align-items: center; gap: var(--spacing-sm); padding: 4px 8px; border: 1px solid ${borderColor}; border-radius: 4px; margin-bottom: 4px; ${entry.active ? 'background: var(--color-stack-active)11;' : ''} ${isFocused ? 'outline: 2px solid var(--color-accent); outline-offset: -2px;' : ''}"
+              style="display: flex; align-items: center; gap: var(--spacing-sm); padding: 4px 8px; border: 1px solid ${borderColor}; border-radius: 4px; margin-bottom: 4px; min-width: fit-content; ${entry.active ? 'background: var(--color-stack-active)11;' : ''} ${isFocused ? 'outline: 2px solid var(--color-accent); outline-offset: -2px;' : ''}"
               aria-selected="${isFocused}" aria-label="${marker || `Address 0x${entry.address.toString(16).toUpperCase().padStart(8, '0')}`}: value 0x${entry.value.toString(16).toUpperCase().padStart(16, '0')}${entry.label ? `, ${entry.label}` : ''}">
-          <span style="width: 80px; color: ${marker ? 'var(--color-stack-active)' : 'var(--color-fg-muted)'}; font-weight: ${marker ? 600 : 400}; font-family: var(--font-mono);">${marker || '0x' + entry.address.toString(16).toUpperCase().padStart(8, '0')}</span>
-          <span style="flex: 1; font-family: var(--font-mono);">0x${entry.value.toString(16).toUpperCase().padStart(16, '0')}</span>
-          ${entry.label ? `<span style="color: var(--color-fg-muted); font-size: 0.6875rem;">${entry.label}</span>` : ''}
+          <span style="width: 80px; flex-shrink: 0; color: ${marker ? 'var(--color-stack-active)' : 'var(--color-fg-muted)'}; font-weight: ${marker ? 600 : 400}; font-family: var(--font-mono);">${marker || '0x' + entry.address.toString(16).toUpperCase().padStart(8, '0')}</span>
+          <span style="flex-shrink: 0; font-family: var(--font-mono);">0x${entry.value.toString(16).toUpperCase().padStart(16, '0')}</span>
+          ${entry.label ? `<span style="color: var(--color-fg-muted); font-size: 0.6875rem; white-space: nowrap;">${entry.label}</span>` : ''}
         </div>`;
       })
       .join('');

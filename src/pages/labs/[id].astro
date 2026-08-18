@@ -230,8 +230,8 @@ const difficultyBadge: Record<string, string> = {
     margin: 0.75rem 0;
   }
   .solution-content :global(pre code) { background: transparent; padding: 0; }
-  .solution-content :global(table) { border-collapse: collapse; width: 100%; margin: 0.75rem 0; font-size: 0.875rem; }
-  .solution-content :global(th), .solution-content :global(td) { border: 1px solid var(--color-border); padding: 0.4rem 0.6rem; text-align: left; }
+  .solution-content :global(table) { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; width: 100%; margin: 0.75rem 0; font-size: 0.875rem; }
+  .solution-content :global(th), .solution-content :global(td) { border: 1px solid var(--color-border); padding: 0.4rem 0.6rem; text-align: left; overflow-wrap: anywhere; }
   .solution-content :global(th) { background: var(--color-bg-elevated); }
   .solution-content :global(strong) { color: var(--color-accent); }
 

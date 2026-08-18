@@ -26,6 +26,7 @@ export class InstructionPlayground {
   private lastChanged: Set<string>;
   private lastChangedFlags: Set<FlagName>;
   private lastCode: string;
+  private errorMessage: string | null = null;
 
   constructor(container: HTMLElement, options: InstructionPlaygroundOptions = {}) {
     this.container = container;
@@ -49,6 +50,12 @@ export class InstructionPlayground {
     const flagsHtml = this.renderFlags();
 
     this.container.innerHTML = `
+      <style>
+        @media (max-width: 640px) {
+          .playground .pg-columns { grid-template-columns: 1fr !important; }
+          .playground .pg-editor-panel { border-right: none !important; border-bottom: 1px solid var(--color-border); }
+        }
+      </style>
       <div class="playground" role="region" aria-label="${this.title}" tabindex="0"
            style="font-family: var(--font-mono); background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden;">
         <div class="pg-toolbar" style="display: flex; align-items: center; justify-content: space-between; padding: var(--spacing-sm) var(--spacing-md); border-bottom: 1px solid var(--color-border); flex-wrap: wrap; gap: var(--spacing-sm);">
@@ -58,7 +65,7 @@ export class InstructionPlayground {
             <button class="btn btn-primary pg-run" aria-label="Execute all instructions in the editor" style="padding: 4px 12px; font-size: 0.75rem;">Run</button>
           </div>
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0;">
+        <div class="pg-columns" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0;">
           <div class="pg-editor-panel" style="border-right: 1px solid var(--color-border);">
             <div style="padding: var(--spacing-xs) var(--spacing-md); color: var(--color-fg-muted); font-size: 0.6875rem; letter-spacing: 0.05em; border-bottom: 1px solid var(--color-border);">CODE — One instruction per line</div>
             <textarea class="pg-code" spellcheck="false" aria-label="Assembly code input" role="textbox"
@@ -76,7 +83,7 @@ export class InstructionPlayground {
           </div>
         </div>
         <div class="pg-error" role="alert" aria-live="assertive"
-             style="display: none; padding: var(--spacing-sm) var(--spacing-md); color: var(--color-danger); border-top: 1px solid var(--color-border); font-size: 0.8125rem;"></div>
+             style="display: ${this.errorMessage ? 'block' : 'none'}; padding: var(--spacing-sm) var(--spacing-md); color: var(--color-danger); border-top: 1px solid var(--color-border); font-size: 0.8125rem;">${this.errorMessage ? this.escapeHtml(this.errorMessage) : ''}</div>
         <div class="pg-status" aria-live="polite" aria-atomic="true"
              style="padding: var(--spacing-xs) var(--spacing-md); color: var(--color-accent); font-size: 0.75rem; border-top: 1px solid var(--color-border); min-height: 1.5em;">
           ${this.getStatusText()}
@@ -131,16 +138,15 @@ export class InstructionPlayground {
     const runBtn = this.container.querySelector('.pg-run') as HTMLButtonElement;
     const resetBtn = this.container.querySelector('.pg-reset') as HTMLButtonElement;
     const codeEl = this.container.querySelector('.pg-code') as HTMLTextAreaElement;
-    const errorEl = this.container.querySelector('.pg-error') as HTMLElement;
     const root = this.container.querySelector('.playground') as HTMLElement;
 
-    runBtn?.addEventListener('click', () => this.runCode(codeEl, errorEl));
+    runBtn?.addEventListener('click', () => this.runCode(codeEl));
     resetBtn?.addEventListener('click', () => this.reset(codeEl));
 
     codeEl?.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
-        this.runCode(codeEl, errorEl);
+        this.runCode(codeEl);
       }
     });
 
@@ -158,7 +164,7 @@ export class InstructionPlayground {
     }
   }
 
-  private runCode(codeEl: HTMLTextAreaElement, errorEl: HTMLElement): void {
+  private runCode(codeEl: HTMLTextAreaElement): void {
     this.lastCode = codeEl.value;
     this.state = this.freshState();
     this.lastChanged = new Set();
@@ -177,8 +183,7 @@ export class InstructionPlayground {
         result.changedFlags.forEach((f) => this.lastChangedFlags.add(f));
         this.executedLines.push(line);
       } catch (e) {
-        errorEl.style.display = 'block';
-        errorEl.textContent = `Error at line ${i + 1} ("${line}"): ${(e as Error).message}`;
+        this.errorMessage = `Error at line ${i + 1} ("${line}"): ${(e as Error).message}`;
         hasError = true;
         errorLine = i;
         break;
@@ -186,7 +191,7 @@ export class InstructionPlayground {
     }
 
     if (!hasError) {
-      errorEl.style.display = 'none';
+      this.errorMessage = null;
     }
 
     this.render(this.lastCode);
@@ -213,6 +218,7 @@ export class InstructionPlayground {
     this.lastChanged = new Set();
     this.lastChangedFlags = new Set();
     this.executedLines = [];
+    this.errorMessage = null;
     this.render(codeEl.value);
     const statusEl = this.container.querySelector('.pg-status');
     if (statusEl) statusEl.textContent = this.getStatusText();

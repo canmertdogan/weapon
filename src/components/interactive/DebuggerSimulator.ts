@@ -196,6 +196,13 @@ export class DebuggerSimulator {
     const flagsHtml = this.renderFlags();
 
     this.container.innerHTML = `
+      <style>
+        @media (max-width: 640px) {
+          .dbg-simulator .dbg-columns { grid-template-columns: 1fr !important; }
+          .dbg-simulator .dbg-disasm-panel { border-right: none !important; border-bottom: 1px solid var(--color-border); }
+          .dbg-simulator .dbg-side-panel { border-left: none !important; }
+        }
+      </style>
       <div class="dbg-simulator" role="region" aria-label="${this.title}" tabindex="0"
            style="font-family: var(--font-mono); background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden;">
         <div class="dbg-toolbar" style="display: flex; align-items: center; justify-content: space-between; padding: var(--spacing-sm) var(--spacing-md); border-bottom: 1px solid var(--color-border); flex-wrap: wrap; gap: var(--spacing-sm);">
@@ -207,7 +214,7 @@ export class DebuggerSimulator {
             <button class="btn btn-primary dbg-run" aria-label="Run until breakpoint or program end" style="padding: 4px 10px; font-size: 0.75rem;">Run</button>
           </div>
         </div>
-        <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 0;">
+        <div class="dbg-columns" style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 0;">
           <div class="dbg-disasm-panel" role="region" aria-label="Disassembly" tabindex="0" style="outline: none; border-right: 1px solid var(--color-border);">
             <div style="padding: var(--spacing-xs) var(--spacing-md); color: var(--color-fg-muted); font-size: 0.6875rem; letter-spacing: 0.05em; border-bottom: 1px solid var(--color-border);">DISASSEMBLY — Enter/Space to toggle breakpoint, Arrow keys to navigate</div>
             <div role="list" aria-label="Instructions" style="padding: var(--spacing-sm); font-size: 0.8125rem; max-height: 360px; overflow: auto;">${listing}</div>
