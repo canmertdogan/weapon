@@ -16,63 +16,63 @@ const firstLesson = flatLessons[0];
 <Base title="Dashboard" description="WEAPON — Reverse Engineering Startup Course">
   <Header slot="header" />
 
-  <header class="py-10">
-    <p class="font-mono text-xs text-accent tracking-[0.35em] uppercase mb-3">Field Manual</p>
-    <h1 class="text-3xl md:text-4xl mb-3">WEAPON</h1>
-    <p class="text-fg-muted max-w-2xl">
-      A reverse engineering startup course — binary analysis, assembly, debugging, and Windows internals, taught through interactive investigation. Progress is saved locally in your browser; modules are open in any order.
-    </p>
-  </header>
+  <section class="grid grid-cols-1 lg:grid-cols-2 gap-4 py-8" aria-label="Introduction and recommended companion course">
+    <div class="card flex flex-col justify-center">
+      <p class="font-mono text-xs text-accent tracking-[0.35em] uppercase mb-3">Field Manual</p>
+      <h1 class="text-3xl md:text-4xl mb-3">WEAPON</h1>
+      <p class="text-fg-muted">
+        A reverse engineering startup course — binary analysis, assembly, debugging, and Windows internals, taught through interactive investigation. Progress is saved locally in your browser; modules are open in any order.
+      </p>
+    </div>
 
-  <section class="pb-6" aria-label="Recommended companion course">
-    <a href="https://canmertdogan.github.io/storage/helper/mxdr-l1-soc-crash-course/index.html" target="_blank" rel="noreferrer" class="card card-hover flex flex-col sm:flex-row items-start sm:items-center gap-4 no-underline">
-      <div class="flex-1">
-        <p class="font-mono text-xs text-accent mb-1">NEW TO CYBERSECURITY?</p>
-        <h3 class="text-lg mb-1">SOC Analyst's Handbook</h3>
-        <p class="text-sm text-fg-muted">Try this core course module first — an interactive L1 SOC/MXDR training platform with 33 modules and a live incident-triage simulator.</p>
-      </div>
-      <span class="btn btn-secondary flex-shrink-0">Open Handbook <span aria-hidden="true">↗</span></span>
+    <a href="https://canmertdogan.github.io/storage/helper/mxdr-l1-soc-crash-course/index.html" target="_blank" rel="noreferrer" class="card card-hover flex flex-col justify-center gap-2 no-underline">
+      <p class="font-mono text-xs text-accent mb-1">RECOMMENDED FIRST</p>
+      <h3 class="text-lg mb-1">SOC Analyst's Handbook</h3>
+      <p class="text-sm text-fg-muted mb-4">Try this core course module first — an interactive L1 SOC/MXDR training platform with 33 modules and a live incident-triage simulator.</p>
+      <span class="btn btn-secondary self-start">Open Handbook <span aria-hidden="true">↗</span></span>
     </a>
   </section>
 
-  <section class="grid grid-cols-1 lg:grid-cols-[minmax(0,220px)_1fr] gap-4 mb-4">
-    <div class="card flex flex-col items-center justify-center gap-2 text-center py-8">
-      <div class="progress-ring" style="--ring-size:120px" data-overall-progress>
-        <svg viewBox="0 0 100 100">
-          <circle class="progress-ring-track" cx="50" cy="50" r="42"></circle>
-          <circle class="progress-ring-fill" cx="50" cy="50" r="42"></circle>
-        </svg>
-        <span class="progress-ring-label" style="font-size:1.35rem">0%</span>
+  <section class="card mb-4" aria-label="Your progress">
+    <div class="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-6 items-center">
+      <div class="flex flex-col items-center gap-2 text-center px-2 sm:pr-6 sm:border-r sm:border-border">
+        <div class="progress-ring" style="--ring-size:110px" data-overall-progress>
+          <svg viewBox="0 0 100 100">
+            <circle class="progress-ring-track" cx="50" cy="50" r="42"></circle>
+            <circle class="progress-ring-fill" cx="50" cy="50" r="42"></circle>
+          </svg>
+          <span class="progress-ring-label" style="font-size:1.35rem">0%</span>
+        </div>
+        <p class="font-mono text-xs text-fg-muted uppercase tracking-wider mt-1">Overall Progress</p>
       </div>
-      <p class="font-mono text-xs text-fg-muted uppercase tracking-wider mt-1">Overall Progress</p>
-    </div>
 
-    <div class="card flex flex-col justify-center gap-4">
-      <div class="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <p class="font-mono text-xs text-fg-muted uppercase tracking-wider mb-1">Rank</p>
-          <p class="rank-badge text-2xl" id="rank-badge">RECRUIT</p>
-        </div>
-        <div class="flex gap-8">
-          <div class="text-center">
-            <p class="stat-tile-value text-xl" id="stat-lessons">0<span class="text-fg-muted text-base font-normal">/{totalLessons}</span></p>
-            <p class="stat-tile-label">Lessons</p>
+      <div class="flex flex-col gap-4">
+        <div class="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <p class="font-mono text-xs text-fg-muted uppercase tracking-wider mb-1">Rank</p>
+            <p class="rank-badge text-2xl" id="rank-badge">RECRUIT</p>
           </div>
-          <div class="text-center">
-            <p class="stat-tile-value text-xl" id="stat-labs">0<span class="text-fg-muted text-base font-normal">/{totalLabs}</span></p>
-            <p class="stat-tile-label">Labs</p>
-          </div>
-          <div class="text-center">
-            <p class="stat-tile-value text-xl">{tree.length}</p>
-            <p class="stat-tile-label">Modules</p>
+          <div class="flex gap-8">
+            <div class="text-center">
+              <p class="stat-tile-value text-xl" id="stat-lessons">0<span class="text-fg-muted text-base font-normal">/{totalLessons}</span></p>
+              <p class="stat-tile-label">Lessons</p>
+            </div>
+            <div class="text-center">
+              <p class="stat-tile-value text-xl" id="stat-labs">0<span class="text-fg-muted text-base font-normal">/{totalLabs}</span></p>
+              <p class="stat-tile-label">Labs</p>
+            </div>
+            <div class="text-center">
+              <p class="stat-tile-value text-xl">{tree.length}</p>
+              <p class="stat-tile-label">Modules</p>
+            </div>
           </div>
         </div>
-      </div>
-      <div data-rank-progress>
-        <div class="h-1.5 bg-border rounded-full overflow-hidden">
-          <div class="progress-fill h-full bg-accent transition-all duration-500" data-rank-progress-fill style="width: 0%"></div>
+        <div data-rank-progress>
+          <div class="h-1.5 bg-border rounded-full overflow-hidden">
+            <div class="progress-fill h-full bg-accent transition-all duration-500" data-rank-progress-fill style="width: 0%"></div>
+          </div>
+          <p class="text-xs text-fg-muted font-mono mt-2" data-rank-progress-label>&nbsp;</p>
         </div>
-        <p class="text-xs text-fg-muted font-mono mt-2" data-rank-progress-label>&nbsp;</p>
       </div>
     </div>
   </section>

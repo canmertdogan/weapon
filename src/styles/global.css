@@ -301,6 +301,42 @@
     border-color: var(--color-accent);
   }
 
+  /* Shared long-form content typography (lessons, cheatsheets, tool list). */
+  .prose-content h2 { margin: 2rem 0 1rem; }
+  .prose-content h3 { margin: 1.5rem 0 0.75rem; }
+  .prose-content p { margin: 0.75rem 0; line-height: 1.7; }
+  .prose-content ul, .prose-content ol { margin: 0.75rem 0; padding-left: 1.5rem; }
+  .prose-content li { margin: 0.25rem 0; }
+  .prose-content code {
+    background: var(--color-bg-elevated);
+    padding: 0.125rem 0.375rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.875em;
+  }
+  .prose-content pre {
+    background: var(--color-bg);
+    border-left: 3px solid var(--color-accent);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    padding: var(--spacing-4);
+    overflow-x: auto;
+    font-size: 0.8125rem;
+    line-height: 1.7;
+    margin: 1rem 0;
+  }
+  .prose-content pre code { background: transparent; padding: 0; }
+  .prose-content table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.875rem; }
+  .prose-content th, .prose-content td { border: 1px solid var(--color-border); padding: 0.5rem 0.75rem; text-align: left; overflow-wrap: anywhere; }
+  .prose-content th { background: var(--color-bg-elevated); }
+  .prose-content blockquote {
+    border-left: 3px solid var(--color-accent);
+    margin: 1rem 0;
+    padding: 0.5rem 1rem;
+    color: var(--color-fg-muted);
+    background: var(--color-bg-elevated);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  }
+  .prose-content hr { border: none; border-top: 1px solid var(--color-border); margin: 2rem 0; }
+
   .code-block {
     background-color: var(--color-bg);
     border-left: 3px solid var(--color-accent);

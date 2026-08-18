@@ -1,0 +1,277 @@
+---
+import Base from '../../layouts/Base.astro';
+import Header from '../../components/layout/Header.astro';
+import Footer from '../../components/layout/Footer.astro';
+
+interface Tool {
+  name: string;
+  url: string;
+  platform: string;
+  license: 'Free' | 'Open Source' | 'Commercial' | 'Free tier';
+  description: string;
+}
+
+interface ToolCategory {
+  id: string;
+  label: string;
+  blurb: string;
+  tools: Tool[];
+}
+
+const categories: ToolCategory[] = [
+  {
+    id: 'disassemblers',
+    label: 'Disassemblers & Decompilers',
+    blurb: 'Turn machine code back into readable assembly — and, where possible, C-like pseudocode.',
+    tools: [
+      {
+        name: 'Ghidra',
+        url: 'https://ghidra-sre.org/',
+        platform: 'Windows, macOS, Linux',
+        license: 'Open Source',
+        description: 'NSA-developed disassembler and decompiler. Free, full-featured, and the closest thing the free-tool world has to an IDA Pro replacement — this course\'s screenshots and workflow assume Ghidra.',
+      },
+      {
+        name: 'IDA Free',
+        url: 'https://hex-rays.com/ida-free/',
+        platform: 'Windows, macOS, Linux',
+        license: 'Free tier',
+        description: 'The free edition of the industry-standard disassembler. No decompiler and 32-bit x86 only in the free tier, but the analysis engine and UI are the real thing.',
+      },
+      {
+        name: 'Binary Ninja',
+        url: 'https://binary.ninja/',
+        platform: 'Windows, macOS, Linux',
+        license: 'Commercial',
+        description: 'Commercial disassembler with a clean decompiler and a genuinely good Python API for automating analysis. Has a limited free cloud tier for quick one-off lookups.',
+      },
+      {
+        name: 'Cutter',
+        url: 'https://cutter.re/',
+        platform: 'Windows, macOS, Linux',
+        license: 'Open Source',
+        description: 'A proper GUI on top of the rizin/radare2 engine, with an optional Ghidra-decompiler plugin. Good middle ground if r2\'s command line isn\'t for you.',
+      },
+      {
+        name: 'radare2',
+        url: 'https://rada.re/',
+        platform: 'Windows, macOS, Linux',
+        license: 'Open Source',
+        description: 'Free, CLI-first reverse engineering framework. Extremely scriptable and fast once you\'ve climbed the (steep) learning curve on its command syntax.',
+      },
+    ],
+  },
+  {
+    id: 'debuggers',
+    label: 'Debuggers',
+    blurb: 'Run the binary under controlled conditions — set breakpoints, step instruction by instruction, inspect memory and registers live.',
+    tools: [
+      {
+        name: 'x64dbg',
+        url: 'https://x64dbg.com/',
+        platform: 'Windows',
+        license: 'Open Source',
+        description: 'Free, open-source user-mode debugger for Windows PE binaries. The standard free alternative to OllyDbg for x86/x64 — this course\'s debugging labs are written around it.',
+      },
+      {
+        name: 'WinDbg (Preview)',
+        url: 'https://learn.microsoft.com/windows-hardware/drivers/debugger/',
+        platform: 'Windows',
+        license: 'Free',
+        description: 'Microsoft\'s own debugger — user-mode and kernel-mode, plus crash-dump analysis. Install via the Microsoft Store. Steeper command syntax than x64dbg, but it\'s the only option for driver/kernel work.',
+      },
+      {
+        name: 'GDB',
+        url: 'https://www.gnu.org/software/gdb/',
+        platform: 'Linux, macOS, Windows (via WSL/MinGW)',
+        license: 'Open Source',
+        description: 'The standard debugger on Linux/Unix. Command-line only by default (pair it with gdb-dashboard, pwndbg, or GEF for a usable register/memory view).',
+      },
+      {
+        name: 'LLDB',
+        url: 'https://lldb.llvm.org/',
+        platform: 'macOS, Linux',
+        license: 'Open Source',
+        description: 'The LLVM project\'s debugger, and the default on macOS (it\'s what Xcode uses under the hood). GDB-compatible command aliases are available.',
+      },
+    ],
+  },
+  {
+    id: 'binary-inspection',
+    label: 'PE / Binary & Hex Tools',
+    blurb: 'Static, no-execution tools for reading a binary\'s headers, sections, and raw bytes directly — exactly what the hex viewer labs in this course teach by hand.',
+    tools: [
+      {
+        name: 'PE-bear',
+        url: 'https://github.com/hasherezade/pe-bear',
+        platform: 'Windows, Linux (Qt build)',
+        license: 'Open Source',
+        description: 'Fast, focused PE header/section/import-table viewer and editor. The quickest way to eyeball a PE\'s structure without opening a full disassembler.',
+      },
+      {
+        name: 'CFF Explorer',
+        url: 'https://ntcore.com/?page_id=388',
+        platform: 'Windows',
+        license: 'Free',
+        description: 'Part of the Explorer Suite. A veteran, still-solid PE editor — inspect and directly patch header fields, sections, resources, and imports.',
+      },
+      {
+        name: 'Detect It Easy (DIE)',
+        url: 'https://github.com/horsicq/DIE-engine',
+        platform: 'Windows, macOS, Linux',
+        license: 'Open Source',
+        description: 'Signature-based packer, compiler, and language detector, plus a built-in entropy view. Your first move on an unknown sample — exactly the workflow lab-16 and lab-22 teach.',
+      },
+      {
+        name: 'ImHex',
+        url: 'https://imhex.werwolv.net/',
+        platform: 'Windows, macOS, Linux',
+        license: 'Open Source',
+        description: 'Modern, free hex editor with a pattern-language for parsing structured binary formats (write a PE-header template once, reuse it on every sample).',
+      },
+      {
+        name: 'HxD',
+        url: 'https://mh-nexus.de/en/hxd/',
+        platform: 'Windows',
+        license: 'Free',
+        description: 'Lightweight, no-frills Windows hex editor. No scripting or templates — just fast, reliable byte-level viewing and editing.',
+      },
+      {
+        name: '010 Editor',
+        url: 'https://www.sweetscape.com/010editor/',
+        platform: 'Windows, macOS, Linux',
+        license: 'Commercial',
+        description: 'Commercial hex editor built around "binary templates" — parse a file format once as a C-like struct and get an instant structured view of every sample.',
+      },
+    ],
+  },
+  {
+    id: 'dynamic-analysis',
+    label: 'Dynamic Analysis & System Monitoring',
+    blurb: 'Watch what a running process actually does — files it touches, registry keys it writes, network connections it opens.',
+    tools: [
+      {
+        name: 'Sysinternals Suite',
+        url: 'https://learn.microsoft.com/sysinternals/',
+        platform: 'Windows',
+        license: 'Free',
+        description: 'Microsoft\'s official toolset: Process Explorer, Process Monitor (Procmon), Autoruns, TCPView, and more. Procmon\'s file/registry/network trace is the backbone of any Windows dynamic-analysis workflow.',
+      },
+      {
+        name: 'System Informer',
+        url: 'https://systeminformer.sourceforge.io/',
+        platform: 'Windows',
+        license: 'Open Source',
+        description: 'The actively-maintained continuation of Process Hacker — a Task Manager replacement that shows loaded modules, handles, and memory regions per process.',
+      },
+      {
+        name: 'API Monitor',
+        url: 'http://www.rohitab.com/apimonitor',
+        platform: 'Windows',
+        license: 'Free',
+        description: 'Hooks and logs Win32 API calls from a running process in real time, with arguments and return values — a dynamic complement to statically reading the import table.',
+      },
+      {
+        name: 'Wireshark',
+        url: 'https://www.wireshark.org/',
+        platform: 'Windows, macOS, Linux',
+        license: 'Open Source',
+        description: 'The standard network packet analyzer. Essential once a sample starts talking to a C2 server — capture and inspect the traffic directly.',
+      },
+      {
+        name: 'Frida',
+        url: 'https://frida.re/',
+        platform: 'Windows, macOS, Linux, Android, iOS',
+        license: 'Open Source',
+        description: 'Dynamic instrumentation toolkit — inject JavaScript to hook and rewrite function behavior in a running process, across desktop and mobile.',
+      },
+    ],
+  },
+  {
+    id: 'malware-analysis',
+    label: 'Malware Analysis & Detection Engineering',
+    blurb: 'Purpose-built for triage: extract obfuscated strings, map capabilities, and write shareable detection signatures.',
+    tools: [
+      {
+        name: 'FLOSS',
+        url: 'https://github.com/mandiant/flare-floss',
+        platform: 'Windows, macOS, Linux',
+        license: 'Open Source',
+        description: 'Mandiant\'s FLARE team tool for automatically extracting obfuscated strings (stack strings, XOR/tight-loop-decoded strings) that plain `strings` output misses entirely.',
+      },
+      {
+        name: 'CAPA',
+        url: 'https://github.com/mandiant/capa',
+        platform: 'Windows, macOS, Linux',
+        license: 'Open Source',
+        description: 'Automatically identifies a binary\'s capabilities (persistence, injection, C2, anti-debug...) from its code, and maps each finding to MITRE ATT&CK — a fast first-pass triage report.',
+      },
+      {
+        name: 'YARA',
+        url: 'https://virustotal.github.io/yara/',
+        platform: 'Windows, macOS, Linux',
+        license: 'Open Source',
+        description: 'The industry-standard pattern-matching engine for writing and sharing detection rules — turn what you found in a sample into a signature that flags the next one.',
+      },
+      {
+        name: 'FLARE-VM',
+        url: 'https://github.com/mandiant/flare-vm',
+        platform: 'Windows (VM provisioning script)',
+        license: 'Open Source',
+        description: 'A scripted installer that turns a clean Windows VM into a fully-loaded malware-analysis box — most of the tools on this page, installed and configured in one pass.',
+      },
+      {
+        name: 'REMnux',
+        url: 'https://remnux.org/',
+        platform: 'Linux (distro / VM)',
+        license: 'Open Source',
+        description: 'A Linux distribution pre-loaded with tools for analyzing malicious documents, scripts, and network traffic — the Linux-side counterpart to FLARE-VM.',
+      },
+    ],
+  },
+];
+---
+
+<Base title="Tool List" description="Real reverse engineering tools — what each one is for, and where to get it.">
+  <Header slot="header" />
+
+  <header class="py-10">
+    <p class="font-mono text-xs text-accent tracking-[0.35em] uppercase mb-3">Field Manual</p>
+    <h1 class="text-3xl md:text-4xl mb-3">Tool List</h1>
+    <p class="text-fg-muted max-w-2xl">
+      Every tool referenced across this course, in one place — what it's for, which platform it runs on, and a link to the official source. All free or free-tier unless marked otherwise; nothing here requires payment to follow along.
+    </p>
+  </header>
+
+  <nav class="flex flex-wrap gap-2 pb-10 font-mono text-xs" aria-label="Jump to category">
+    {categories.map((cat) => (
+      <a href={`#${cat.id}`} class="badge badge-current no-underline">{cat.label}</a>
+    ))}
+  </nav>
+
+  {categories.map((cat) => (
+    <section class="pb-16" aria-labelledby={`${cat.id}-heading`} id={cat.id}>
+      <h2 id={`${cat.id}-heading`} class="text-2xl mb-2">{cat.label}</h2>
+      <p class="text-fg-muted mb-8 max-w-2xl">{cat.blurb}</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {cat.tools.map((tool) => (
+          <div class="card flex flex-col gap-3">
+            <div class="flex items-start justify-between gap-3">
+              <h3 class="text-lg font-display font-bold text-fg">{tool.name}</h3>
+              <span class="badge badge-current flex-shrink-0">{tool.license}</span>
+            </div>
+            <p class="text-sm text-fg-muted">{tool.description}</p>
+            <div class="flex items-center justify-between gap-3 mt-auto pt-2 border-t border-border">
+              <span class="font-mono text-xs text-fg-muted">{tool.platform}</span>
+              <a href={tool.url} target="_blank" rel="noreferrer" class="btn btn-secondary flex-shrink-0 text-xs px-3 py-1.5">
+                Download <span aria-hidden="true">↗</span>
+              </a>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  ))}
+
+  <Footer slot="footer" />
+</Base>

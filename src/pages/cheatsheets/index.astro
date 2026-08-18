@@ -1,0 +1,199 @@
+---
+import Base from '../../layouts/Base.astro';
+import Header from '../../components/layout/Header.astro';
+import Footer from '../../components/layout/Footer.astro';
+
+const sections = [
+  { id: 'registers', label: 'x86-64 Registers & Calling Conventions' },
+  { id: 'instructions', label: 'Common x86-64 Instructions' },
+  { id: 'pe-format', label: 'PE Format Quick Reference' },
+  { id: 'elf-format', label: 'ELF Format Quick Reference' },
+  { id: 'debuggers', label: 'Debugger Command Reference' },
+  { id: 'winapi', label: 'WinAPI Capability Clusters' },
+];
+---
+
+<Base title="Cheatsheets" description="Quick reference tables for x86-64, PE, ELF, debugger commands, and WinAPI capability clusters.">
+  <Header slot="header" />
+
+  <header class="py-10">
+    <p class="font-mono text-xs text-accent tracking-[0.35em] uppercase mb-3">Field Manual</p>
+    <h1 class="text-3xl md:text-4xl mb-3">Cheatsheets</h1>
+    <p class="text-fg-muted max-w-2xl">
+      Quick-lookup reference tables for everything this course covers by hand. Not a substitute for the lessons — a fast reminder once you already know why a field matters.
+    </p>
+  </header>
+
+  <nav class="flex flex-wrap gap-2 pb-10 font-mono text-xs" aria-label="Jump to section">
+    {sections.map((s) => (
+      <a href={`#${s.id}`} class="badge badge-current no-underline">{s.label}</a>
+    ))}
+  </nav>
+
+  <div class="prose-content max-w-none">
+    <section id="registers" aria-labelledby="registers-heading" class="pb-4">
+      <h2 id="registers-heading">x86-64 Registers &amp; Calling Conventions</h2>
+      <table>
+        <thead>
+          <tr><th>Register</th><th>Common use</th><th>Windows x64 (caller/callee-saved)</th><th>System V AMD64 (Linux/macOS)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>RAX</code></td><td>Accumulator, return value</td><td>Caller-saved</td><td>Caller-saved</td></tr>
+          <tr><td><code>RBX</code></td><td>General purpose</td><td>Callee-saved</td><td>Callee-saved</td></tr>
+          <tr><td><code>RCX</code></td><td>1st int arg (Win) / loop counter</td><td>Caller-saved · arg 1</td><td>Caller-saved · arg 4</td></tr>
+          <tr><td><code>RDX</code></td><td>2nd int arg (Win) / I/O port, remainder</td><td>Caller-saved · arg 2</td><td>Caller-saved · arg 3</td></tr>
+          <tr><td><code>RSI</code></td><td>Source index (string ops) / arg 2 (SysV)</td><td>Callee-saved</td><td>Caller-saved · arg 2</td></tr>
+          <tr><td><code>RDI</code></td><td>Destination index (string ops) / arg 1 (SysV)</td><td>Callee-saved</td><td>Caller-saved · arg 1</td></tr>
+          <tr><td><code>RBP</code></td><td>Frame/base pointer</td><td>Callee-saved</td><td>Callee-saved</td></tr>
+          <tr><td><code>RSP</code></td><td>Stack pointer</td><td>Callee-saved</td><td>Callee-saved</td></tr>
+          <tr><td><code>R8</code></td><td>3rd int arg (Win) / 5th (SysV)</td><td>Caller-saved · arg 3</td><td>Caller-saved · arg 5</td></tr>
+          <tr><td><code>R9</code></td><td>4th int arg (Win) / 6th (SysV)</td><td>Caller-saved · arg 4</td><td>Caller-saved · arg 6</td></tr>
+          <tr><td><code>R10–R11</code></td><td>Scratch</td><td>Caller-saved</td><td>Caller-saved</td></tr>
+          <tr><td><code>R12–R15</code></td><td>General purpose</td><td>Callee-saved</td><td>Callee-saved</td></tr>
+        </tbody>
+      </table>
+      <p>
+        <strong>Windows x64</strong>: first four integer/pointer args in <code>RCX, RDX, R8, R9</code>; the rest on the stack. The caller always reserves 32 bytes of <em>shadow space</em> above the return address, even if the callee has fewer than 4 args. Float/double args use <code>XMM0–XMM3</code> in parallel with the integer slots (an arg is in <em>either</em> the GPR <em>or</em> the XMM register for its position, never both).
+      </p>
+      <p>
+        <strong>System V AMD64</strong> (Linux/macOS): first six integer/pointer args in <code>RDI, RSI, RDX, RCX, R8, R9</code>; floats in <code>XMM0–XMM7</code>. No shadow space, but there's a 128-byte <em>red zone</em> below <code>RSP</code> that leaf functions can use without adjusting the stack pointer.
+      </p>
+    </section>
+
+    <section id="instructions" aria-labelledby="instructions-heading" class="pb-4">
+      <h2 id="instructions-heading">Common x86-64 Instructions</h2>
+      <table>
+        <thead><tr><th>Instruction</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><code>mov dst, src</code></td><td>Copy value</td></tr>
+          <tr><td><code>lea dst, [expr]</code></td><td>Load the computed <em>address</em> — doesn't dereference. Often used as arithmetic (<code>lea rax, [rbx+rcx*4]</code>).</td></tr>
+          <tr><td><code>push</code> / <code>pop</code></td><td>Push to / pop from the stack, adjusting <code>RSP</code></td></tr>
+          <tr><td><code>add</code> / <code>sub</code></td><td>Add / subtract</td></tr>
+          <tr><td><code>inc</code> / <code>dec</code></td><td>Increment / decrement by 1 (doesn't affect <code>CF</code>)</td></tr>
+          <tr><td><code>and</code> / <code>or</code> / <code>xor</code> / <code>not</code></td><td>Bitwise operations. <code>xor reg, reg</code> is the idiomatic way to zero a register.</td></tr>
+          <tr><td><code>shl</code>/<code>sal</code>, <code>shr</code>, <code>sar</code></td><td>Shift left, logical shift right, arithmetic (sign-preserving) shift right</td></tr>
+          <tr><td><code>cmp a, b</code></td><td>Computes <code>a - b</code>, sets flags, discards the result</td></tr>
+          <tr><td><code>test a, b</code></td><td>Computes <code>a AND b</code>, sets flags, discards the result — <code>test reg, reg</code> is the idiomatic zero-check</td></tr>
+          <tr><td><code>jmp</code></td><td>Unconditional jump</td></tr>
+          <tr><td><code>call</code> / <code>ret</code></td><td>Push return address and jump to a function / pop it and jump back</td></tr>
+          <tr><td><code>nop</code></td><td>No-op (also the classic padding/alignment filler byte, <code>0x90</code>)</td></tr>
+          <tr><td><code>int3</code></td><td>Software breakpoint interrupt (<code>0xCC</code>) — what a debugger writes over an instruction to trap execution</td></tr>
+          <tr><td><code>syscall</code></td><td>Enter the kernel (x86-64 Linux/macOS syscall instruction)</td></tr>
+        </tbody>
+      </table>
+      <p>Conditional jumps read the flags <code>cmp</code>/<code>test</code> just set:</p>
+      <table>
+        <thead><tr><th>Mnemonic</th><th>Condition</th><th>Typical use</th></tr></thead>
+        <tbody>
+          <tr><td><code>je</code> / <code>jz</code></td><td><code>ZF=1</code></td><td>Equal / zero</td></tr>
+          <tr><td><code>jne</code> / <code>jnz</code></td><td><code>ZF=0</code></td><td>Not equal / non-zero</td></tr>
+          <tr><td><code>jg</code> / <code>jnle</code></td><td><code>ZF=0</code> and <code>SF=OF</code></td><td>Signed greater-than</td></tr>
+          <tr><td><code>jge</code></td><td><code>SF=OF</code></td><td>Signed greater-or-equal</td></tr>
+          <tr><td><code>jl</code></td><td><code>SF≠OF</code></td><td>Signed less-than</td></tr>
+          <tr><td><code>jle</code></td><td><code>ZF=1</code> or <code>SF≠OF</code></td><td>Signed less-or-equal</td></tr>
+          <tr><td><code>ja</code></td><td><code>CF=0</code> and <code>ZF=0</code></td><td>Unsigned above</td></tr>
+          <tr><td><code>jb</code> / <code>jc</code></td><td><code>CF=1</code></td><td>Unsigned below / carry set</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="pe-format" aria-labelledby="pe-format-heading" class="pb-4">
+      <h2 id="pe-format-heading">PE Format Quick Reference</h2>
+      <table>
+        <thead><tr><th>Offset</th><th>Field</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>0x00</code></td><td><code>e_magic</code></td><td><code>"MZ"</code> — DOS header signature</td></tr>
+          <tr><td><code>0x3C</code></td><td><code>e_lfanew</code></td><td>4-byte offset to the PE signature. Everything from <code>0x40</code> to here is the DOS stub — a classic hiding spot.</td></tr>
+          <tr><td><code>e_lfanew</code></td><td><code>Signature</code></td><td><code>"PE\0\0"</code></td></tr>
+          <tr><td>+4</td><td>COFF File Header (20 bytes)</td><td><code>Machine</code>, <code>NumberOfSections</code>, <code>TimeDateStamp</code>, <code>SizeOfOptionalHeader</code>, <code>Characteristics</code></td></tr>
+          <tr><td>+24</td><td>Optional Header (PE32+)</td><td><code>Magic=0x20B</code>, <code>AddressOfEntryPoint</code> (RVA), <code>ImageBase</code>, <code>SectionAlignment</code>, <code>FileAlignment</code>, <code>SizeOfImage</code>, <code>Subsystem</code>, <code>DllCharacteristics</code>, 16-entry <code>DataDirectory[]</code></td></tr>
+          <tr><td>after Optional Header</td><td>Section Table</td><td><code>NumberOfSections</code> × 40-byte <code>IMAGE_SECTION_HEADER</code> entries</td></tr>
+        </tbody>
+      </table>
+      <p><strong>Data Directory index → contents:</strong></p>
+      <table>
+        <thead><tr><th>Index</th><th>Directory</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td>Export Table</td></tr>
+          <tr><td>1</td><td>Import Table</td></tr>
+          <tr><td>2</td><td>Resource Table</td></tr>
+          <tr><td>5</td><td>Base Relocation Table</td></tr>
+          <tr><td>6</td><td>Debug</td></tr>
+          <tr><td>9</td><td>TLS Table</td></tr>
+          <tr><td>10</td><td>Load Config Table</td></tr>
+          <tr><td>12</td><td>Import Address Table (IAT)</td></tr>
+          <tr><td>14</td><td>CLR Runtime Header (.NET binaries)</td></tr>
+        </tbody>
+      </table>
+      <p><strong>Section characteristics (bitflags):</strong> <code>0x20000000</code> EXECUTE · <code>0x40000000</code> READ · <code>0x80000000</code> WRITE. A section with all three set (<code>0xE0000000</code>-family, "RWX") is the classic packing/injection red flag — see lab-11 and lab-16.</p>
+    </section>
+
+    <section id="elf-format" aria-labelledby="elf-format-heading" class="pb-4">
+      <h2 id="elf-format-heading">ELF Format Quick Reference</h2>
+      <table>
+        <thead><tr><th>Offset</th><th>Field</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>0x00</code></td><td><code>e_ident[16]</code></td><td><code>\x7fELF</code>, then class (1=32-bit, 2=64-bit), data (1=little-endian), version, OS/ABI</td></tr>
+          <tr><td><code>0x10</code></td><td><code>e_type</code></td><td>1=<code>ET_REL</code>, 2=<code>ET_EXEC</code>, 3=<code>ET_DYN</code> (PIE / shared object), 4=<code>ET_CORE</code></td></tr>
+          <tr><td><code>0x12</code></td><td><code>e_machine</code></td><td><code>0x3E</code>=x86-64, <code>0xB7</code>=AArch64, <code>0x03</code>=i386</td></tr>
+          <tr><td><code>0x18</code></td><td><code>e_entry</code></td><td>Entry point virtual address</td></tr>
+          <tr><td><code>0x20</code></td><td><code>e_phoff</code></td><td>File offset of the program header table</td></tr>
+          <tr><td><code>0x28</code></td><td><code>e_shoff</code></td><td>File offset of the section header table (0 if stripped)</td></tr>
+          <tr><td><code>0x36</code></td><td><code>e_phentsize</code> / <code>e_phnum</code></td><td>Size and count of program header entries</td></tr>
+        </tbody>
+      </table>
+      <p><strong>Program header <code>p_type</code> values:</strong></p>
+      <table>
+        <thead><tr><th>Value</th><th>Type</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><code>PT_LOAD</code></td><td>A segment to map into memory (code or data)</td></tr>
+          <tr><td>2</td><td><code>PT_DYNAMIC</code></td><td>Dynamic linking info (needed libraries, relocations)</td></tr>
+          <tr><td>3</td><td><code>PT_INTERP</code></td><td>Path to the dynamic linker, e.g. <code>/lib64/ld-linux-x86-64.so.2</code></td></tr>
+          <tr><td>4</td><td><code>PT_NOTE</code></td><td>Auxiliary vendor/OS note data</td></tr>
+          <tr><td>6</td><td><code>PT_PHDR</code></td><td>Location of the program header table itself, once mapped</td></tr>
+          <tr><td>7</td><td><code>PT_TLS</code></td><td>Thread-local storage template</td></tr>
+        </tbody>
+      </table>
+      <p><strong><code>p_flags</code>:</strong> <code>1</code>=PF_X (execute) · <code>2</code>=PF_W (write) · <code>4</code>=PF_R (read) — combined by OR, e.g. <code>5</code> = R+X.</p>
+    </section>
+
+    <section id="debuggers" aria-labelledby="debuggers-heading" class="pb-4">
+      <h2 id="debuggers-heading">Debugger Command Reference</h2>
+      <table>
+        <thead><tr><th>Action</th><th>x64dbg</th><th>GDB</th></tr></thead>
+        <tbody>
+          <tr><td>Set breakpoint</td><td><code>bp &lt;addr&gt;</code></td><td><code>break *&lt;addr&gt;</code> / <code>b &lt;func&gt;</code></td></tr>
+          <tr><td>Run</td><td>F9</td><td><code>run</code> / <code>r</code></td></tr>
+          <tr><td>Continue</td><td>F9</td><td><code>continue</code> / <code>c</code></td></tr>
+          <tr><td>Step into</td><td>F7</td><td><code>stepi</code> / <code>si</code></td></tr>
+          <tr><td>Step over</td><td>F8</td><td><code>nexti</code> / <code>ni</code></td></tr>
+          <tr><td>Show registers</td><td>Registers panel (always visible)</td><td><code>info registers</code> / <code>i r</code></td></tr>
+          <tr><td>Examine memory</td><td>Dump panel, "Follow in Dump"</td><td><code>x/20xb $rsp</code></td></tr>
+          <tr><td>Disassemble</td><td>CPU panel (always visible)</td><td><code>disassemble</code> / <code>disas</code></td></tr>
+          <tr><td>Hardware breakpoint on write</td><td>right-click memory → "Break on write"</td><td><code>watch *&lt;addr&gt;</code></td></tr>
+          <tr><td>List loaded modules</td><td>Memory Map (Alt+M)</td><td><code>info proc mappings</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="winapi" aria-labelledby="winapi-heading" class="pb-4">
+      <h2 id="winapi-heading">WinAPI Capability Clusters</h2>
+      <p>Individual imports are weak signals — legitimate software uses most of these too. A <em>cluster</em> of related imports is what turns "possible" into "likely." These are the exact clusters this course's labs are built around:</p>
+      <table>
+        <thead><tr><th>Capability</th><th>API cluster</th></tr></thead>
+        <tbody>
+          <tr><td>Process injection</td><td><code>OpenProcess</code> → <code>VirtualAllocEx</code> → <code>WriteProcessMemory</code> → <code>CreateRemoteThread</code></td></tr>
+          <tr><td>Keylogging (hook-based)</td><td><code>SetWindowsHookExA</code> (<code>WH_KEYBOARD_LL</code>) + <code>GetForegroundWindow</code></td></tr>
+          <tr><td>Keylogging (polling)</td><td><code>GetAsyncKeyState</code> in a loop + <code>GetForegroundWindow</code></td></tr>
+          <tr><td>Registry persistence</td><td><code>RegCreateKeyExW</code> → <code>RegSetValueExW</code> (typically a <code>...\CurrentVersion\Run</code> key)</td></tr>
+          <tr><td>Service persistence</td><td><code>CreateServiceW</code> → <code>StartServiceW</code></td></tr>
+          <tr><td>C2 / beaconing (WinINet)</td><td><code>InternetOpenW</code> → <code>InternetConnectW</code> → <code>HttpSendRequestW</code></td></tr>
+          <tr><td>Anti-debugging</td><td><code>IsDebuggerPresent</code>, <code>CheckRemoteDebuggerPresent</code>, <code>NtQueryInformationProcess</code></td></tr>
+          <tr><td>DLL search-order hijack targets</td><td>small app-local DLLs commonly missing from KnownDLLs: <code>version.dll</code>, <code>dwmapi.dll</code>, <code>uxtheme.dll</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+
+  <Footer slot="footer" />
+</Base>
