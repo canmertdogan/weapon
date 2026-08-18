@@ -80,14 +80,14 @@ export class LessonNotes {
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--spacing-sm);">
           <h4 style="font-family: var(--font-display); font-size: 0.875rem; font-weight: 600;">Notes</h4>
           <div style="display: flex; gap: var(--spacing-xs);">
-            <button class="notes-export btn btn-ghost" aria-label="Export notes" style="padding: 2px 8px; font-size: 0.75rem;">
+            <button class="notes-export btn btn-ghost" aria-label="Export notes for every lesson" title="Export notes for every lesson" style="padding: 2px 8px; font-size: 0.75rem;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="17 8 12 3 7 8"></polyline>
                 <line x1="12" y1="3" x2="12" y2="15"></line>
               </svg>
             </button>
-            <button class="notes-import btn btn-ghost" aria-label="Import notes" style="padding: 2px 8px; font-size: 0.75rem;">
+            <button class="notes-import btn btn-ghost" aria-label="Import notes, replacing every lesson's notes" title="Import notes, replacing every lesson's notes" style="padding: 2px 8px; font-size: 0.75rem;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="7 8 12 3 17 8"></polyline>
@@ -147,9 +147,16 @@ export class LessonNotes {
     importFile?.addEventListener('change', async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
+      const confirmed = confirm(
+        'Importing will replace your notes for every lesson, not just this one. Continue?'
+      );
+      if (!confirmed) {
+        importFile.value = '';
+        return;
+      }
       const text = await file.text();
       if (importNotes(text)) {
-        this.showStatus('Notes imported successfully');
+        this.showStatus('Notes imported for all lessons');
         this.textarea!.value = getLessonNotes(this.lessonId);
       } else {
         this.showStatus('Failed to import notes', true);

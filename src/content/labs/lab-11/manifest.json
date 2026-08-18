@@ -17,7 +17,7 @@
     "format": "PE",
     "name": "anomaly.exe",
     "file": "/binaries/lab-11.hex",
-    "bytes": 1024
+    "bytes": 1536
   },
   "questions": [
     {

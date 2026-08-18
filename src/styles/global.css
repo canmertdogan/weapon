@@ -255,11 +255,6 @@
     border: 1px solid transparent;
   }
 
-  .badge-locked {
-    background-color: transparent;
-    color: var(--color-fg-muted);
-    border-color: var(--color-border);
-  }
 
   /* Difficulty badges — intensity of the same accent hue, not new colors */
   .badge-trivial {
@@ -477,10 +472,6 @@
     animation: roadmap-pulse 2s ease-in-out infinite;
   }
 
-  .roadmap-node.is-locked .roadmap-marker {
-    opacity: 0.5;
-  }
-
   .roadmap-content {
     flex: 1;
     min-width: 0;
@@ -694,5 +685,54 @@
   @keyframes cursor-blink {
     0%, 49% { opacity: 1; }
     50%, 100% { opacity: 0; }
+  }
+}
+
+/* Print: strip site chrome and interactive controls, force a readable
+   light printout instead of dumping the raw dark screen UI. */
+@media print {
+  header,
+  footer,
+  #sidebar,
+  #command-palette,
+  .lesson-notes,
+  .btn,
+  .hex-toolbar-actions,
+  .hex-viewer-status,
+  input,
+  button {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #111111 !important;
+  }
+
+  article {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .card,
+  .hex-viewer,
+  .prose-content pre,
+  .prose-content blockquote {
+    background: #ffffff !important;
+    color: #111111 !important;
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
+  }
+
+  .hex-body,
+  .hex-viewer-body {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  a {
+    color: #111111 !important;
+    text-decoration: underline;
   }
 }

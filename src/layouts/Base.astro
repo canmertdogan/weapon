@@ -5,12 +5,23 @@ import '@fontsource/chakra-petch/500.css';
 import '@fontsource/chakra-petch/600.css';
 import '@fontsource/chakra-petch/700.css';
 import '../styles/global.css';
+import { getModuleTree } from '../utils/course';
+import { getAllLabs } from '../utils/labs';
 
 interface Props {
   title: string;
   description?: string;
 }
 const { title, description = "WEAPON — Reverse Engineering Startup Course" } = Astro.props;
+
+const tree = await getModuleTree();
+const paletteModules = tree.map((m) => ({
+  id: m.id,
+  label: m.label,
+  summary: m.summary,
+  lessons: m.lessons.map((l) => ({ id: l.id, title: l.title, href: l.href, objectives: l.objectives })),
+}));
+const paletteLabs = getAllLabs().map((l) => ({ id: l.id, title: l.title, module: l.module, description: l.description }));
 ---
 <!doctype html>
 <html lang="en">
@@ -35,6 +46,9 @@ const { title, description = "WEAPON — Reverse Engineering Startup Course" } =
   </body>
 </html>
 
+<script type="application/json" id="palette-modules-data" is:inline set:html={JSON.stringify(paletteModules)} />
+<script type="application/json" id="palette-labs-data" is:inline set:html={JSON.stringify(paletteLabs)} />
+
 <script>
   import { updateRankBadge } from '../scripts/progress';
   import { updateProgressUI, updateDashboardUI } from '../scripts/progress-ui';
@@ -58,18 +72,16 @@ const { title, description = "WEAPON — Reverse Engineering Startup Course" } =
     });
   }
 
-  // Initialize command palette when data is available
+  // Initialize command palette with the full module/lesson/lab index
   function tryInitPalette() {
-    const lessonsEl = document.getElementById('lessons-data');
-    if (lessonsEl) {
-      try {
-        const lessons = JSON.parse(lessonsEl.textContent || '[]');
-        const modules: any[] = [];
-        const labs: any[] = [];
-        initCommandPalette(modules, labs);
-      } catch (e) {
-        console.warn('Failed to init command palette', e);
-      }
+    const modulesEl = document.getElementById('palette-modules-data');
+    const labsEl = document.getElementById('palette-labs-data');
+    try {
+      const modules = JSON.parse(modulesEl?.textContent || '[]');
+      const labs = JSON.parse(labsEl?.textContent || '[]');
+      initCommandPalette(modules, labs);
+    } catch (e) {
+      console.warn('Failed to init command palette', e);
     }
   }
 

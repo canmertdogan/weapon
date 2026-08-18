@@ -3,51 +3,51 @@
   "title": "Suspicious API Identification",
   "module": "foundations",
   "lesson": "f4",
-  "description": "A binary's import table reveals its capability. Identify which imported APIs indicate malicious or suspicious behavior.",
+  "description": "A binary's import table reveals its capability. Identify which imported APIs indicate keystroke-capture behavior.",
   "difficulty": "Easy",
   "estimatedTime": 15,
   "prerequisites": [
     "f4-executable-formats",
     "PE import table structure (IAT, INT)",
-    "Common Windows APIs for memory/process manipulation"
+    "Common Windows APIs for input/window manipulation"
   ],
   "binary": {
     "format": "PE",
-    "name": "loader.exe",
+    "name": "kbhook.exe",
     "file": "/binaries/lab-02.hex",
-    "bytes": 512
+    "bytes": 2048
   },
   "questions": [
     {
       "id": "q1",
       "type": "string",
-      "prompt": "Which DLL import suggests process injection capability?",
-      "answer": "kernel32.dll"
+      "prompt": "Which DLL import suggests keystroke-capture capability?",
+      "answer": "user32.dll"
     },
     {
       "id": "q2",
       "type": "string",
-      "prompt": "Which API is used to execute code in another process's memory space?",
-      "answer": "createremotethread"
+      "prompt": "Which API installs a system-wide hook capable of intercepting keystrokes?",
+      "answer": "setwindowshookexa"
     },
     {
       "id": "q3",
       "type": "string",
-      "prompt": "Which API is used to change the protection of a memory region (often to make it executable)?",
-      "answer": "virtualprotectex"
+      "prompt": "Which API polls whether a specific key is currently pressed — used by a polling-based keylogger instead of a hook?",
+      "answer": "getasynckeystate"
     }
   ],
   "hints": [
-    "Process injection typically requires three APIs: allocate, write, execute.",
-    "Look for APIs that operate on 'remote' process memory.",
-    "The Execute flag in memory protection is a red flag."
+    "Keyloggers use one of two techniques: a global hook, or polling key state in a loop.",
+    "Look for APIs that operate on windows, input, or keyboard state.",
+    "GetForegroundWindow is often paired with keylogging to know which window/app the keystrokes belong to."
   ],
-  "methodology": "## Investigation Methodology\n\n### 1. Parse the Import Table\n- Open the binary in Ghidra or a PE viewer (PE-bear, CFF Explorer)\n- Navigate to the Import Directory (Data Directory [1])\n- Enumerate all imported DLLs and their functions\n\n### 2. Categorize Imports by Capability\nGroup imports into functional categories:\n- **Process/Memory Manipulation**: `VirtualAllocEx`, `WriteProcessMemory`, `CreateRemoteThread`, `OpenProcess`\n- **Code Execution**: `CreateThread`, `WinExec`, `ShellExecute`, `CreateProcess`\n- **Persistence**: `RegSetValueEx`, `CreateService`, `WriteFile` (startup folders)\n- **Network**: `InternetOpen`, `HttpSendRequest`, `WSASocket`, `connect`\n- **Anti-Analysis**: `IsDebuggerPresent`, `CheckRemoteDebuggerPresent`, `NtQueryInformationProcess`\n\n### 3. Identify Suspicious Clusters\n- Single suspicious API = weak signal (legitimate apps use them too)\n- **Cluster of 3+ related APIs** = strong indicator of specific capability\n- Process injection cluster: `OpenProcess` → `VirtualAllocEx` → `WriteProcessMemory` → `VirtualProtectEx` → `CreateRemoteThread`\n\n### 4. Assess Intent\n- Legitimate use: debuggers, injectors (hot-patch), AV/EDR\n- Malicious use: shellcode execution, DLL injection, process hollowing\n- Context matters: is the binary signed? What's the publisher?\n\n### 5. Document Findings\n- List each suspicious API with DLL\n- Explain the capability it enables\n- Note the cluster pattern if present",
+  "methodology": "## Investigation Methodology\n\n### 1. Parse the Import Table\n- Open the binary in Ghidra or a PE viewer (PE-bear, CFF Explorer)\n- Navigate to the Import Directory (Data Directory [1])\n- Enumerate all imported DLLs and their functions\n\n### 2. Categorize Imports by Capability\nGroup imports into functional categories:\n- **Input Capture**: `SetWindowsHookExA/W`, `GetAsyncKeyState`, `GetKeyState`, `GetKeyboardState`\n- **Window Context**: `GetForegroundWindow`, `GetWindowTextA/W`, `GetClassNameA/W`\n- **Process/Memory Manipulation**: `VirtualAllocEx`, `WriteProcessMemory`, `CreateRemoteThread`\n- **Persistence**: `RegSetValueEx`, `CreateService`, `WriteFile` (startup folders)\n- **Network**: `InternetOpen`, `HttpSendRequest`, `WSASocket`, `connect`\n\n### 3. Identify Suspicious Clusters\n- Single suspicious API = weak signal (legitimate apps use them too — accessibility tools, IMEs)\n- **Cluster of 2-3 related APIs** = strong indicator of specific capability\n- Keystroke-capture cluster: `SetWindowsHookExA` (install a `WH_KEYBOARD_LL` hook) **or** a tight loop calling `GetAsyncKeyState`, usually paired with `GetForegroundWindow` to log which application had focus\n\n### 4. Assess Intent\n- Legitimate use: accessibility software, hotkey managers, game overlays\n- Malicious use: credential theft, session recording\n- Context matters: is the binary signed? Does it register a visible window, or run headless?\n\n### 5. Document Findings\n- List each suspicious API with DLL\n- Explain the capability it enables\n- Note whether the hook or polling technique is used",
   "commonPitfalls": [
-    "Flagging individual APIs without considering context (e.g., `VirtualAlloc` alone is normal)",
-    "Missing `Ex` variants — `VirtualAllocEx` operates on remote processes, `VirtualAlloc` on current",
-    "Overlooking `OpenProcess` — required to get a handle for remote operations",
-    "Confusing `CreateThread` (local) with `CreateRemoteThread` (remote)"
+    "Flagging `GetForegroundWindow` alone without considering context (used by countless legitimate apps)",
+    "Missing that `SetWindowsHookExA` needs a hook type argument (`WH_KEYBOARD_LL` = 13) to actually capture keys — the import alone only shows capability, not confirmed behavior",
+    "Confusing `GetAsyncKeyState` (polls current key state, works globally) with `GetKeyState` (only valid after a key message, not global)",
+    "Assuming keylogging requires kernel-mode code — the classic technique is entirely user-mode via USER32.dll"
   ],
   "tools": [
     "Ghidra (Imports window)",
@@ -58,15 +58,15 @@
   ],
   "references": [
     "Lesson F4: Executable Formats — Import Address Table deep dive",
-    "Microsoft Docs: Process Injection Techniques",
-    "MITRE ATT&CK: T1055 — Process Injection",
-    "Windows Internals: Memory Management"
+    "Microsoft Docs: SetWindowsHookEx / Keyboard Input",
+    "MITRE ATT&CK: T1056.001 — Input Capture: Keylogging",
+    "Windows Internals: Message Loop & Hooks"
   ],
   "extensions": [
-    "Analyze a real malware sample's imports (e.g., from MalwareBazaar)",
-    "Build a YARA rule that detects the process injection API cluster",
-    "Research: How does `QueueUserAPC` / `NtQueueApcThread` enable injection?",
-    "Compare: Thread hijacking vs. CreateRemoteThread vs. Early Bird APC"
+    "Analyze a real malware sample's imports (e.g., from MalwareBazaar) for input-capture APIs",
+    "Build a YARA rule that detects the `SetWindowsHookEx` + `GetAsyncKeyState` combination",
+    "Research: How does a WH_KEYBOARD_LL hook differ from WH_KEYBOARD?",
+    "Compare: Hook-based vs. polling-based keylogging — which is easier to detect dynamically?"
   ],
-  "solution": "## Suspicious API Identification — Solution\n\nThe import table tells a clear story:\n\n1. **KERNEL32.dll** — Core Windows API, but the specific functions matter.\n2. **CreateRemoteThread** — Creates a thread *in another process*, the classic mechanism for code injection.\n3. **VirtualProtectEx** — Changes memory protection of a *remote* process region, typically flipping a region to `PAGE_EXECUTE_READWRITE` before running shellcode.\n\n**The injection chain** is the classic pattern:\n```\nVirtualAllocEx  → allocate memory in target\nWriteProcessMemory → copy payload\nVirtualProtectEx → make it executable\nCreateRemoteThread → execute it\n```\n\nSeeing these together is a strong indicator of process injection capability."
+  "solution": "## Suspicious API Identification — Solution\n\nThe import table tells a clear story:\n\n1. **USER32.dll** — the DLL that owns window/input APIs; the specific functions matter.\n2. **SetWindowsHookExA** — installs a system-wide hook that can intercept every keystroke before it reaches its target window.\n3. **GetAsyncKeyState** — an alternative technique: poll the state of any key at any time, without a hook at all.\n4. **GetForegroundWindow** — commonly paired with either technique to tag captured keystrokes with the application that was focused when they were typed.\n\n**The keylogging cluster** is unmistakable:\n```\nSetWindowsHookExA   → install a global keyboard hook\n  -- or --\nGetAsyncKeyState    → poll key state in a loop\n\nGetForegroundWindow  → attribute captured keys to the active window\n```\n\nSeeing these together — a capture technique plus window context — is a strong indicator of keystroke-logging capability."
 }

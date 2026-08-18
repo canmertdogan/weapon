@@ -16,7 +16,7 @@
     "format": "PE",
     "name": "injector.exe",
     "file": "/binaries/lab-05.hex",
-    "bytes": 512
+    "bytes": 2048
   },
   "questions": [
     {

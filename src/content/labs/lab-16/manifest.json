@@ -5,7 +5,7 @@
   "lesson": "m4",
   "description": "Identify a packed binary and determine which packer was used.",
   "difficulty": "Medium",
-  "estimatedTime": 20,
+  "estimatedTime": 15,
   "prerequisites": [
     "m4-obfuscation-packing",
     "w1-pe-deep-dive",
@@ -17,7 +17,7 @@
     "format": "PE",
     "name": "packed.exe",
     "file": "/binaries/lab-16.hex",
-    "bytes": 768
+    "bytes": 1024
   },
   "questions": [
     {

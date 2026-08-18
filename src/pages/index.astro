@@ -99,16 +99,15 @@ sample.bin: PE32+ executable (console) x86-64
 
   <section class="py-16" aria-labelledby="modules-heading">
     <h2 id="modules-heading" class="text-2xl mb-2 text-center">The Path</h2>
-    <p class="text-center text-fg-muted mb-10 max-w-lg mx-auto">{tree.length} modules, in order. Each one unlocks the next as you complete lessons.</p>
+    <p class="text-center text-fg-muted mb-10 max-w-lg mx-auto">{tree.length} modules. Take them in order, or jump to whatever you're curious about.</p>
     <div class="roadmap max-w-2xl mx-auto">
       {tree.map((module, i) => (
-        <div class="roadmap-node" data-roadmap-node={module.id} data-module-lock={module.id} data-lessons={module.lessons.map((l) => l.id).join(',')}>
+        <div class="roadmap-node" data-roadmap-node={module.id} data-lessons={module.lessons.map((l) => l.id).join(',')}>
           <div class="roadmap-marker">{String(i + 1).padStart(2, '0')}</div>
           <a href={`${BASE}course/${module.id}`} class="roadmap-content card card-hover flex flex-col gap-3 no-underline">
             <div class="flex items-center justify-between gap-3">
               <span class="font-display font-bold text-lg text-fg">{module.label}</span>
               <span class="flex items-center gap-2 flex-shrink-0">
-                <span class="badge badge-locked hidden" data-lock-badge>Locked</span>
                 <span class="badge badge-current">{module.lessons.length || '—'} lesson{module.lessons.length !== 1 ? 's' : ''}</span>
               </span>
             </div>

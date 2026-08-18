@@ -4,8 +4,8 @@
   "module": "debugging",
   "lesson": "d3",
   "description": "Trace a loop to determine its final state without stepping every iteration.",
-  "difficulty": "Medium",
-  "estimatedTime": 15,
+  "difficulty": "Easy",
+  "estimatedTime": 10,
   "prerequisites": [
     "d3-execution-flow",
     "a3-control-flow",

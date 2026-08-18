@@ -58,11 +58,6 @@ const difficultyBadge: Record<string, string> = {
           data-binary-hex={lab.binary.hex || ''}
           class="mb-4"
         ></div>
-        {lab.binary.file && (
-          <a href={binaryUrl} download class="btn btn-secondary text-sm mb-4">
-            Download {lab.binary.name}
-          </a>
-        )}
       </section>
     )}
 
@@ -108,8 +103,9 @@ const difficultyBadge: Record<string, string> = {
                 id={`q-${q.id}`}
                 data-answer={q.answer}
                 autocomplete="off"
+                inputmode={q.type === 'number' ? 'numeric' : 'text'}
                 class="w-full px-3 py-2 bg-bg border border-border rounded-md text-fg focus:outline-none focus:border-accent"
-                placeholder="Your answer"
+                placeholder={q.type === 'number' ? 'Your answer (decimal)' : q.type === 'offset' ? 'Your answer (0x...)' : 'Your answer'}
               />
             </div>
           ))}
@@ -283,64 +279,65 @@ const difficultyBadge: Record<string, string> = {
   }
   loadBinary();
 
-  // Progressive hint reveal with cooldown
+  // Progressive hint reveal: hint N unlocks HINT_COOLDOWN after hint N-1 was
+  // revealed (hint 0 is always open). A hint stays locked indefinitely until
+  // the previous one has actually been opened.
   const hintItems = document.querySelectorAll('.hint-item');
   const HINT_COOLDOWN = 30000; // 30 seconds
   const labForm = document.getElementById('lab-form') as HTMLFormElement | null;
   const labId = labForm?.dataset.labId || '';
 
-  hintItems.forEach((item, index) => {
+  const hintKey = (index: number) => `weapon:hint:${labId}:${index}`;
+  const isRevealed = (index: number) => localStorage.getItem(hintKey(index)) === 'true';
+  const revealedAt = (index: number) => parseInt(localStorage.getItem(`${hintKey(index)}:time`) || '0', 10);
+
+  function hintState(index: number): { canReveal: boolean; unlockAt: number | null } {
+    if (isRevealed(index)) return { canReveal: true, unlockAt: null };
+    if (index === 0) return { canReveal: true, unlockAt: null };
+    if (!isRevealed(index - 1)) return { canReveal: false, unlockAt: null };
+    const unlockAt = revealedAt(index - 1) + HINT_COOLDOWN;
+    return { canReveal: Date.now() >= unlockAt, unlockAt };
+  }
+
+  function applyHintState(item: Element, index: number): void {
     const summary = item.querySelector('summary');
-    const body = item.querySelector('.accordion-body');
-    if (!summary || !body) return;
-
-    // Check if hint was previously revealed
-    const storageKey = `weapon:hint:${labId}:${index}`;
-    const revealed = localStorage.getItem(storageKey) === 'true';
-    const lastRevealed = parseInt(localStorage.getItem(`${storageKey}:time`) || '0', 10);
-    const canReveal = revealed || (Date.now() - lastRevealed > HINT_COOLDOWN);
-
+    if (!summary) return;
+    const { canReveal, unlockAt } = hintState(index);
     if (canReveal) {
       item.removeAttribute('data-locked');
-      summary.style.opacity = '1';
-      summary.style.cursor = 'pointer';
+      (summary as HTMLElement).style.opacity = '1';
+      (summary as HTMLElement).style.cursor = 'pointer';
+      summary.removeAttribute('data-cooldown');
     } else {
       item.setAttribute('data-locked', 'true');
-      summary.style.opacity = '0.5';
-      summary.style.cursor = 'not-allowed';
-      const remaining = Math.ceil((HINT_COOLDOWN - (Date.now() - lastRevealed)) / 1000);
-      summary.setAttribute('data-cooldown', `Available in ${remaining}s`);
+      (summary as HTMLElement).style.opacity = '0.5';
+      (summary as HTMLElement).style.cursor = 'not-allowed';
+      const label = unlockAt ? `Available in ${Math.ceil((unlockAt - Date.now()) / 1000)}s` : 'Open the previous hint first';
+      summary.setAttribute('data-cooldown', label);
     }
+  }
+
+  hintItems.forEach((item, index) => {
+    const summary = item.querySelector('summary');
+    if (!summary) return;
+
+    applyHintState(item, index);
 
     summary.addEventListener('click', (e) => {
-      if (!canReveal) {
+      if (!hintState(index).canReveal) {
         e.preventDefault();
         return;
       }
-      if (!revealed) {
-        localStorage.setItem(storageKey, 'true');
-        localStorage.setItem(`${storageKey}:time`, String(Date.now()));
+      if (!isRevealed(index)) {
+        localStorage.setItem(hintKey(index), 'true');
+        localStorage.setItem(`${hintKey(index)}:time`, String(Date.now()));
       }
     });
   });
 
-  // Update cooldown display
+  // Tick the cooldown display and unlock the next hint once its timer elapses
   setInterval(() => {
-    hintItems.forEach((item, index) => {
-      const summary = item.querySelector('summary');
-      if (!summary || item.hasAttribute('data-locked') === false) return;
-      const storageKey = `weapon:hint:${labId}:${index}`;
-      const lastRevealed = parseInt(localStorage.getItem(`${storageKey}:time`) || '0', 10);
-      const remaining = Math.ceil((HINT_COOLDOWN - (Date.now() - lastRevealed)) / 1000);
-      if (remaining > 0) {
-        summary.setAttribute('data-cooldown', `Available in ${remaining}s`);
-      } else {
-        item.removeAttribute('data-locked');
-        summary.style.opacity = '1';
-        summary.style.cursor = 'pointer';
-        summary.removeAttribute('data-cooldown');
-      }
-    });
+    hintItems.forEach((item, index) => applyHintState(item, index));
   }, 1000);
 
   // Form validation
@@ -356,8 +353,9 @@ const difficultyBadge: Record<string, string> = {
     let answered = 0;
 
     inputs.forEach((input) => {
-      const userAnswer = input.value.trim().toLowerCase();
-      const correct = (input.dataset.answer || '').toLowerCase();
+      const normalize = (s: string) => s.trim().toLowerCase().replace(/\s*,\s*/g, ',');
+      const userAnswer = normalize(input.value);
+      const correct = normalize(input.dataset.answer || '');
       if (userAnswer === '') {
         input.style.borderColor = '';
         return;

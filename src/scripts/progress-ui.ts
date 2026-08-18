@@ -1,4 +1,4 @@
-import { loadProgress, getOverallProgress, getRankProgress, isModuleLocked } from './progress';
+import { loadProgress, getOverallProgress, getRankProgress } from './progress';
 
 const RING_CIRCUMFERENCE = 263.9;
 
@@ -102,40 +102,23 @@ export function updateRankProgressUI(): void {
   });
 }
 
-// Soft-locks module links (elements with data-module-lock="<moduleId>") — adds a
-// dimmed/badge visual only, never removes href or pointer-events.
-export function updateModuleLockStates(): void {
-  document.querySelectorAll<HTMLElement>('[data-module-lock]').forEach((el) => {
-    const moduleId = el.dataset.moduleLock || '';
-    const locked = moduleId ? isModuleLocked(moduleId) : false;
-    el.classList.toggle('is-locked', locked);
-    el.querySelectorAll<HTMLElement>('[data-lock-badge]').forEach((badge) => {
-      badge.classList.toggle('hidden', !locked);
-    });
-  });
-}
-
-// Sets is-complete / is-current / is-locked on roadmap nodes (elements with
+// Sets is-complete / is-current on roadmap nodes (elements with
 // data-roadmap-node="<moduleId>" + data-lessons="a,b,c") from real progress data.
 export function updateRoadmapNodes(): void {
   const progress = loadProgress();
   document.querySelectorAll<HTMLElement>('[data-roadmap-node]').forEach((el) => {
-    const moduleId = el.dataset.roadmapNode || '';
     const ids = (el.dataset.lessons || '').split(',').filter(Boolean);
     if (!ids.length) return;
     const completedCount = ids.filter((id) => progress.completedLessons.includes(id)).length;
     const isComplete = completedCount === ids.length;
     const isCurrent = ids.includes(progress.currentLesson) || (completedCount > 0 && !isComplete);
-    const locked = !isComplete && !isCurrent && isModuleLocked(moduleId);
     el.classList.toggle('is-complete', isComplete);
     el.classList.toggle('is-current', !isComplete && isCurrent);
-    el.classList.toggle('is-locked', locked);
   });
 }
 
 export function updateDashboardUI(): void {
   updateOverallProgress();
   updateRankProgressUI();
-  updateModuleLockStates();
   updateRoadmapNodes();
 }

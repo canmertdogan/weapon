@@ -144,10 +144,6 @@ export function getModuleProgress(moduleId: string, totalLessons: number): numbe
   return totalLessons > 0 ? Math.round((completed / totalLessons) * 100) : 0;
 }
 
-export function isModuleLocked(moduleId: string, moduleOrder: string[] = MODULE_ORDER): boolean {
-  return false;
-}
-
 export function updateRankBadge(): void {
   const progress = loadProgress();
   const badge = document.getElementById('rank-badge');

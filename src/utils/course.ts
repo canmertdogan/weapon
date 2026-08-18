@@ -22,7 +22,6 @@ export interface ModuleNode {
   label: string;
   order: number;
   summary: string;
-  locked: boolean;
   lessons: LessonNode[];
 }
 
@@ -58,7 +57,6 @@ export async function getModuleTree(): Promise<ModuleNode[]> {
       label: meta.label,
       order: meta.order,
       summary: meta.summary,
-      locked: meta.locked,
       lessons: nodes,
     };
   });

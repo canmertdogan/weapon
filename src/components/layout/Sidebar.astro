@@ -33,9 +33,6 @@ const { modules, currentModule, currentLesson } = Astro.props;
             <h3 class="font-display font-medium text-xs uppercase tracking-wider text-fg-muted">
               {module.label}
             </h3>
-            {module.locked && (
-              <span class="badge badge-locked" aria-label="Locked">Locked</span>
-            )}
           </div>
           {module.lessons.length > 0 && (
             <ul class="space-y-1" role="list">
@@ -50,8 +47,6 @@ const { modules, currentModule, currentLesson } = Astro.props;
                         'flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors',
                         isActive
                           ? 'bg-accent/10 text-accent border-l-2 border-l-accent'
-                          : module.locked
-                          ? 'text-fg-muted/50 pointer-events-none'
                           : 'text-fg hover:bg-bg',
                       ]}
                       aria-current={isActive ? 'page' : undefined}
@@ -67,7 +62,7 @@ const { modules, currentModule, currentLesson } = Astro.props;
               })}
             </ul>
           )}
-          {module.lessons.length === 0 && !module.locked && (
+          {module.lessons.length === 0 && (
             <p class="text-xs text-fg-muted/50 px-3 py-1">Coming soon</p>
           )}
         </section>

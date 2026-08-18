@@ -51,7 +51,7 @@ No infrastructure required. Everything runs in your browser.
 
 ## Features
 
-- **Course** — structured modules that unlock sequentially as you complete lessons.
+- **Course** — structured modules you can take in order or jump around freely.
 - **Labs** — 24 browser-based challenges with progressive hints (cooldown-timed), answer validation, methodology walkthroughs, common pitfalls, and extension challenges.
 - **Interactive components** — Hex Viewer, Assembly Visualizer, Stack Visualizer, Instruction Playground, Control Flow Visualizer, and Debugger Simulator.
 - **Progression** — a rank system (`RECRUIT → ANALYST → RESEARCHER → REVERSE ENGINEER → BINARY HUNTER`) and completion tracking stored in `localStorage`.
@@ -59,7 +59,6 @@ No infrastructure required. Everything runs in your browser.
 - **Offline support** — service worker for offline access.
 - **Print-friendly** — every lesson can be printed or saved as PDF.
 - **Command palette** — fuzzy search across lessons.
-- **Custom themes** — default, terminal, amber, and monochrome.
 
 ---
 

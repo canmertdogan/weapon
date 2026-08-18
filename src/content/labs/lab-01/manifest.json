@@ -15,7 +15,7 @@
     "format": "PE",
     "name": "mystery.exe",
     "file": "/binaries/lab-01.hex",
-    "bytes": 512
+    "bytes": 2048
   },
   "questions": [
     {
@@ -28,7 +28,7 @@
       "id": "q2",
       "type": "string",
       "prompt": "At what file offset does the string begin? (format: 0x...)",
-      "answer": "0x1e0"
+      "answer": "0x7b"
     }
   ],
   "hints": [
@@ -58,5 +58,5 @@
     "Write a script to automatically scan the DOS stub for ASCII strings",
     "Research: How do packers abuse the DOS stub region?"
   ],
-  "solution": "## Hidden String Hunt — Solution\n\nThe hidden string `WEAPON{first_flag}` is stored at file offset `0x1E0` in the DOS stub region — the padding between the DOS header and the NT headers.\n\n**Why it's obscured**: Most `strings` tools with default settings only look for ASCII runs inside mapped sections. The DOS stub is often skipped because it's before the PE signature.\n\n**How to find it**:\n1. Open the file in a hex editor.\n2. The `e_lfanew` field at offset `0x3C` points to the PE signature.\n3. Everything between `0x40` and `e_lfanew` is the DOS stub — classic hiding spot.\n4. Search for ASCII in that range, or scan for the `WEAPON{` prefix."
+  "solution": "## Hidden String Hunt — Solution\n\nThe hidden string `WEAPON{first_flag}` is stored at file offset `0x7B` in the DOS stub region — right after the standard \"This program cannot be run in DOS mode\" message, in the padding between the DOS header and the NT headers.\n\n**Why it's obscured**: Most `strings` tools with default settings only look for ASCII runs inside mapped sections. The DOS stub is often skipped because it's before the PE signature.\n\n**How to find it**:\n1. Open the file in a hex editor.\n2. The `e_lfanew` field at offset `0x3C` points to the PE signature (here, `0xC0`).\n3. Everything between `0x40` and `e_lfanew` is the DOS stub — classic hiding spot.\n4. Search for ASCII in that range, or scan for the `WEAPON{` prefix."
 }
