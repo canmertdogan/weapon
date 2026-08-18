@@ -52,15 +52,17 @@ duration: 20
 
 ## Verification Lab: Lab 00
 
-Download `verify-toolchain.exe` (provided in course materials).
+Before moving on, confirm your environment is ready. Lab 00 runs a quick browser-based toolchain check — no sample download needed.
 
 **Checks:**
-- [ ] Ghidra opens it, shows `main` at expected address
-- [ ] x64dbg attaches, breaks at entry, shows imports
-- [ ] `strings` reveals embedded version string
-- [ ] PE-bear shows valid PE, no packer signature
+- [ ] Ghidra launches and can open a PE file
+- [ ] x64dbg installs and breaks at the entry point
+- [ ] `strings` extracts both ASCII and UTF-16 from a sample
+- [ ] PE-bear shows a valid PE header with no packer signature
 
 **If all pass → Your arsenal is ready.**
+
+→ [Open Lab 00: Toolchain Verification](/labs/lab-00)
 
 ## Workflow Habits (Start Now)
 
