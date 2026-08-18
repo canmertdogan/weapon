@@ -2,6 +2,8 @@
 
 > **reverse_engineering.init()**
 
+**Live course: [canmertdogan.github.io/weapon](https://canmertdogan.github.io/weapon)** — open it and start learning right now, no setup required.
+
 A reverse engineering startup course. Binary analysis, assembly, debugging, and OS internals — taught through interactive investigation.
 
 WEAPON is a **fully static website** built with [Astro](https://astro.build) and deployed on GitHub Pages. There is no backend, database, or authentication. Every interactive component and lab runs entirely in the browser.
