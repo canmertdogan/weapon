@@ -2,13 +2,20 @@
 import { BASE } from '../../utils/base';
 
 const path = Astro.url.pathname;
-const isActive = (segment: string) => path.includes(`${BASE}${segment}`);
 
-const links = [
-  { href: `${BASE}course`, label: 'Course', match: 'course' },
+interface NavLink {
+  href: string;
+  label: string;
+  match?: string;
+  exact?: boolean;
+}
+const links: NavLink[] = [
+  { href: BASE, label: 'Dashboard', exact: true },
   { href: `${BASE}labs`, label: 'Labs', match: 'labs' },
   { href: `${BASE}about`, label: 'About', match: 'about' },
 ];
+const isActive = (link: NavLink) =>
+  link.exact ? path === link.href : path.includes(`${BASE}${link.match}`);
 ---
 
 <header id="site-header" class="border-b border-border-strong bg-bg-elevated/85 backdrop-blur-sm sticky top-0 z-40">
@@ -31,7 +38,7 @@ const links = [
       </a>
       <nav class="hidden md:flex items-center gap-1 ml-2" aria-label="Primary">
         {links.map((link) => (
-          <a href={link.href} class:list={['nav-pill', isActive(link.match) && 'is-active']} aria-current={isActive(link.match) ? 'page' : undefined}>
+          <a href={link.href} class:list={['nav-pill', isActive(link) && 'is-active']} aria-current={isActive(link) ? 'page' : undefined}>
             {link.label}
           </a>
         ))}
@@ -52,7 +59,7 @@ const links = [
 
       <div id="mobile-nav" class="nav-dropdown md:hidden" hidden>
         {links.map((link) => (
-          <a href={link.href} class:list={['nav-pill', isActive(link.match) && 'is-active']}>
+          <a href={link.href} class:list={['nav-pill', isActive(link) && 'is-active']}>
             {link.label}
           </a>
         ))}

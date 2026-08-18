@@ -9,145 +9,162 @@ import { BASE } from '../utils/base';
 const tree = await getModuleTree();
 const { total: totalLessons } = await getModuleProgressSummary();
 const totalLabs = getAllLabs().length;
-const totalMinutes = tree.flatMap((m) => m.lessons).reduce((sum, l) => sum + l.duration, 0);
-const totalHours = Math.round(totalMinutes / 60);
 const flatLessons = tree.flatMap((m) => m.lessons.map((l) => ({ id: l.id, title: l.title, href: l.href })));
+const firstLesson = flatLessons[0];
 ---
 
-<Base title="Reverse Engineering Startup Course">
+<Base title="Dashboard" description="WEAPON — Reverse Engineering Startup Course">
   <Header slot="header" />
 
-  <section class="py-16 md:py-24 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-    <div class="text-center lg:text-left">
-      <p class="font-mono text-sm text-accent tracking-[0.35em] uppercase mb-4">[ Field Manual ]</p>
-      <h1 class="text-5xl md:text-7xl font-display font-bold tracking-[0.12em] mb-6 text-accent">
-        WEAPON
-      </h1>
-      <p class="font-mono text-sm text-fg-muted mb-6">&gt; reverse_engineering.init()</p>
-      <p class="text-xl md:text-2xl text-fg-muted max-w-xl mx-auto lg:mx-0 text-balance mb-8">
-        A reverse engineering startup course. Binary analysis, assembly, debugging, and Windows internals — taught through interactive investigation.
-      </p>
-      <div class="flex flex-wrap items-center justify-center lg:justify-start gap-4">
-        <a id="resume-cta" href={`${BASE}course`} class="btn btn-primary text-base px-8 py-3">Begin the Course</a>
-        <a href={`${BASE}labs`} class="btn btn-secondary text-base px-8 py-3">View Labs</a>
-      </div>
-      <div class="mt-10 flex flex-wrap justify-center lg:justify-start gap-2 font-mono text-xs text-fg-muted">
-        <span class="badge badge-current">Static Analysis</span>
-        <span class="badge badge-current">Dynamic Analysis</span>
-        <span class="badge badge-current">x86-64 Assembly</span>
-        <span class="badge badge-current">Windows Internals</span>
-        <span class="badge badge-current">Malware Analysis</span>
-      </div>
-    </div>
+  <header class="py-10">
+    <p class="font-mono text-xs text-accent tracking-[0.35em] uppercase mb-3">Field Manual</p>
+    <h1 class="text-3xl md:text-4xl mb-3">WEAPON</h1>
+    <p class="text-fg-muted max-w-2xl">
+      A reverse engineering startup course — binary analysis, assembly, debugging, and Windows internals, taught through interactive investigation. Progress is saved locally in your browser; modules are open in any order.
+    </p>
+  </header>
 
-    <div class="terminal-panel max-w-lg mx-auto w-full" aria-hidden="true">
-      <div class="terminal-panel-bar">
-        <span class="terminal-dot"></span>
-        <span class="terminal-dot"></span>
-        <span class="terminal-dot"></span>
-        <span class="terminal-panel-title">investigation.sh</span>
+  <section class="pb-6" aria-label="Recommended companion course">
+    <a href="https://canmertdogan.github.io/storage/helper/mxdr-l1-soc-crash-course/index.html" target="_blank" rel="noreferrer" class="card card-hover flex flex-col sm:flex-row items-start sm:items-center gap-4 no-underline">
+      <div class="flex-1">
+        <p class="font-mono text-xs text-accent mb-1">NEW TO CYBERSECURITY?</p>
+        <h3 class="text-lg mb-1">SOC Analyst's Handbook</h3>
+        <p class="text-sm text-fg-muted">Try this core course module first — an interactive L1 SOC/MXDR training platform with 33 modules and a live incident-triage simulator.</p>
       </div>
-      <pre class="terminal-panel-body"><code><span class="text-accent-bright">$</span> file sample.bin
-sample.bin: PE32+ executable (console) x86-64
-
-<span class="text-accent-bright">$</span> objdump -d sample.bin | head
-<span class="text-fg-muted">00401020</span> &lt;main&gt;:
-  401020: 55                    push   rbp
-  401024: 48 89 e5              mov    rbp,rsp
-  401027: 48 83 ec 20           sub    rsp,0x20
-  40102b: c7 45 fc 00 00 00 00  mov    DWORD PTR [rbp-0x4],0x0
-  401032: e8 c9 00 00 00        call   401100 &lt;check_license&gt;
-
-<span class="text-accent-bright">$</span> <span class="text-fg-muted"># unknown CALL — what does it invoke?</span>
-<span class="text-accent-bright">$</span> status: <span class="text-accent-bright">investigating entry point</span></code></pre>
-    </div>
+      <span class="btn btn-secondary flex-shrink-0">Open Handbook <span aria-hidden="true">↗</span></span>
+    </a>
   </section>
 
-  <section class="py-8" aria-label="Course statistics">
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div class="stat-tile">
-        <span class="stat-tile-value">{tree.length}</span>
-        <span class="stat-tile-label">Modules</span>
+  <section class="grid grid-cols-1 lg:grid-cols-[minmax(0,220px)_1fr] gap-4 mb-4">
+    <div class="card flex flex-col items-center justify-center gap-2 text-center py-8">
+      <div class="progress-ring" style="--ring-size:120px" data-overall-progress>
+        <svg viewBox="0 0 100 100">
+          <circle class="progress-ring-track" cx="50" cy="50" r="42"></circle>
+          <circle class="progress-ring-fill" cx="50" cy="50" r="42"></circle>
+        </svg>
+        <span class="progress-ring-label" style="font-size:1.35rem">0%</span>
       </div>
-      <div class="stat-tile">
-        <span class="stat-tile-value">{totalLessons}</span>
-        <span class="stat-tile-label">Lessons</span>
+      <p class="font-mono text-xs text-fg-muted uppercase tracking-wider mt-1">Overall Progress</p>
+    </div>
+
+    <div class="card flex flex-col justify-center gap-4">
+      <div class="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <p class="font-mono text-xs text-fg-muted uppercase tracking-wider mb-1">Rank</p>
+          <p class="rank-badge text-2xl" id="rank-badge">RECRUIT</p>
+        </div>
+        <div class="flex gap-8">
+          <div class="text-center">
+            <p class="stat-tile-value text-xl" id="stat-lessons">0<span class="text-fg-muted text-base font-normal">/{totalLessons}</span></p>
+            <p class="stat-tile-label">Lessons</p>
+          </div>
+          <div class="text-center">
+            <p class="stat-tile-value text-xl" id="stat-labs">0<span class="text-fg-muted text-base font-normal">/{totalLabs}</span></p>
+            <p class="stat-tile-label">Labs</p>
+          </div>
+          <div class="text-center">
+            <p class="stat-tile-value text-xl">{tree.length}</p>
+            <p class="stat-tile-label">Modules</p>
+          </div>
+        </div>
       </div>
-      <div class="stat-tile">
-        <span class="stat-tile-value">{totalLabs}</span>
-        <span class="stat-tile-label">Labs</span>
-      </div>
-      <div class="stat-tile">
-        <span class="stat-tile-value">~{totalHours}h</span>
-        <span class="stat-tile-label">Instruction</span>
+      <div data-rank-progress>
+        <div class="h-1.5 bg-border rounded-full overflow-hidden">
+          <div class="progress-fill h-full bg-accent transition-all duration-500" data-rank-progress-fill style="width: 0%"></div>
+        </div>
+        <p class="text-xs text-fg-muted font-mono mt-2" data-rank-progress-label>&nbsp;</p>
       </div>
     </div>
   </section>
 
-  <section class="py-16" aria-labelledby="modules-heading">
-    <h2 id="modules-heading" class="text-2xl mb-2 text-center">The Path</h2>
-    <p class="text-center text-fg-muted mb-10 max-w-lg mx-auto">{tree.length} modules. Take them in order, or jump to whatever you're curious about.</p>
-    <div class="roadmap max-w-2xl mx-auto">
-      {tree.map((module, i) => (
-        <div class="roadmap-node" data-roadmap-node={module.id} data-lessons={module.lessons.map((l) => l.id).join(',')}>
-          <div class="roadmap-marker">{String(i + 1).padStart(2, '0')}</div>
-          <a href={`${BASE}course/${module.id}`} class="roadmap-content card card-hover flex flex-col gap-3 no-underline">
-            <div class="flex items-center justify-between gap-3">
-              <span class="font-display font-bold text-lg text-fg">{module.label}</span>
-              <span class="flex items-center gap-2 flex-shrink-0">
-                <span class="badge badge-current">{module.lessons.length || '—'} lesson{module.lessons.length !== 1 ? 's' : ''}</span>
-              </span>
-            </div>
-            <p class="text-sm text-fg-muted">{module.summary}</p>
-            {module.lessons.length > 0 && (
-              <div class="flex items-center gap-2 mt-1">
-                <div
-                  class="flex-1 h-1.5 bg-border rounded-full overflow-hidden"
-                  data-module-progress
-                  data-lessons={module.lessons.map((l) => l.id).join(',')}
-                >
-                  <div class="progress-fill h-full bg-accent transition-all duration-500" style="width: 0%"></div>
-                </div>
-                <span class="progress-label text-xs text-fg-muted font-mono">0%</span>
+  {firstLesson && (
+    <a id="continue-card" href={firstLesson.href} class="card card-hover flex items-center justify-between gap-4 mb-10">
+      <div class="min-w-0">
+        <p class="font-mono text-xs text-accent mb-1" id="continue-label">Start Here</p>
+        <p class="text-lg font-display truncate" id="continue-title">{firstLesson.title}</p>
+      </div>
+      <span class="btn btn-primary flex-shrink-0">Continue →</span>
+    </a>
+  )}
+
+  <section class="pb-16" aria-labelledby="modules-heading">
+    <div class="flex items-center justify-between gap-3 mb-8">
+      <h2 id="modules-heading" class="text-2xl">Module Roadmap</h2>
+      <a href={`${BASE}labs`} class="btn btn-secondary flex-shrink-0">View Labs</a>
+    </div>
+    <div class="roadmap">
+      {tree.map((module, i) => {
+        const lessonIds = module.lessons.map((l) => l.id).join(',');
+        return (
+          <div class="roadmap-node" data-roadmap-node={module.id} data-lessons={lessonIds}>
+            <div class="roadmap-marker">{String(i + 1).padStart(2, '0')}</div>
+            <div class="roadmap-content card">
+              <div class="flex items-center justify-between gap-3 mb-2">
+                <a href={`${BASE}course/${module.id}`} class="font-display font-bold text-lg text-fg hover:text-accent-bright transition-colors">
+                  {module.label}
+                </a>
+                <span class="flex items-center gap-2 flex-shrink-0">
+                  <span class="badge badge-current">{module.lessons.length || '—'} lesson{module.lessons.length !== 1 ? 's' : ''}</span>
+                </span>
               </div>
-            )}
-          </a>
-        </div>
-      ))}
+              <p class="text-sm text-fg-muted mb-3">{module.summary}</p>
+
+              {module.lessons.length > 0 && (
+                <div class="flex items-center gap-2 mb-4" data-module-progress data-lessons={lessonIds}>
+                  <div class="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
+                    <div class="progress-fill h-full bg-accent transition-all duration-500" style="width: 0%"></div>
+                  </div>
+                  <span class="progress-label text-xs text-fg-muted font-mono">0%</span>
+                </div>
+              )}
+
+              {module.lessons.length > 0 ? (
+                <details class="accordion" data-accordion-module={module.id}>
+                  <summary>
+                    <span>Lessons</span>
+                    <span class="accordion-caret" aria-hidden="true"></span>
+                  </summary>
+                  <div class="accordion-body">
+                    <ol class="space-y-1">
+                      {module.lessons.map((lesson) => (
+                        <li>
+                          <a
+                            href={lesson.href}
+                            data-lesson-id={lesson.id}
+                            class="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-bg transition-colors text-sm"
+                          >
+                            <span class="font-mono text-xs text-fg-muted/50 w-6 flex-shrink-0">{String(lesson.order).padStart(2, '0')}</span>
+                            <span class="flex-1 text-fg">{lesson.title}</span>
+                            <span class="completion-mark hidden text-accent flex-shrink-0" aria-hidden="true">✓</span>
+                            <span class="font-mono text-xs text-fg-muted/50">{lesson.duration}m</span>
+                          </a>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                </details>
+              ) : (
+                <p class="text-sm text-fg-muted/50 italic">Content coming in a future release.</p>
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
   </section>
 
-  <section class="py-16" aria-labelledby="philosophy-heading">
-    <h2 id="philosophy-heading" class="text-2xl mb-8 text-center">The Method</h2>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div class="card">
-        <p class="font-mono text-xs text-accent mb-2">01</p>
-        <h3 class="text-lg mb-2">Investigation</h3>
-        <p class="text-sm text-fg-muted">You won't just learn what a CALL instruction does — you'll learn how to determine what function it invokes, what arguments it receives, and why it matters.</p>
-      </div>
-      <div class="card">
-        <p class="font-mono text-xs text-accent mb-2">02</p>
-        <h3 class="text-lg mb-2">Methodology</h3>
-        <p class="text-sm text-fg-muted">Every lesson moves through concept → observation → reasoning → investigation. Learn to hypothesize, test, and document like a professional.</p>
-      </div>
-      <div class="card">
-        <p class="font-mono text-xs text-accent mb-2">03</p>
-        <h3 class="text-lg mb-2">Hands-on</h3>
-        <p class="text-sm text-fg-muted">Interactive visualizers, a safe instruction playground, and browser-based labs. Practice without infrastructure.</p>
-      </div>
-    </div>
-  </section>
-
-  <section class="py-4" aria-label="Recommended companion course">
-    <div class="max-w-3xl mx-auto">
-      <a href="https://canmertdogan.github.io/storage/helper/mxdr-l1-soc-crash-course/index.html" target="_blank" rel="noreferrer" class="card card-hover flex flex-col sm:flex-row items-start sm:items-center gap-4 no-underline">
-        <div class="flex-1">
-          <p class="font-mono text-xs text-accent mb-1">NEW TO CYBERSECURITY?</p>
-          <h3 class="text-lg mb-1">SOC Analyst's Handbook</h3>
-          <p class="text-sm text-fg-muted">Try this core course module first — an interactive L1 SOC/MXDR training platform with 33 modules and a live incident-triage simulator.</p>
+  <section class="pb-16" aria-labelledby="settings-heading">
+    <h2 id="settings-heading" class="text-2xl mb-8">Settings</h2>
+    <div class="card space-y-6">
+      <div>
+        <h3 class="text-lg mb-4">Progress Backup</h3>
+        <div class="flex flex-wrap gap-3">
+          <button id="export-progress" class="btn btn-secondary">Export Progress (JSON)</button>
+          <button id="import-progress" class="btn btn-secondary">Import Progress</button>
+          <input type="file" id="import-file" accept=".json" class="hidden" />
         </div>
-        <span class="btn btn-secondary flex-shrink-0">Open Handbook <span aria-hidden="true">↗</span></span>
-      </a>
+        <p class="text-sm text-fg-muted mt-2">Backup your progress to a file or restore from a previous export.</p>
+      </div>
     </div>
   </section>
 
@@ -157,23 +174,77 @@ sample.bin: PE32+ executable (console) x86-64
 <script type="application/json" id="lessons-data" is:inline set:html={JSON.stringify(flatLessons)} />
 
 <script>
-  import { loadProgress } from '../scripts/progress';
+  import { loadProgress, exportProgressData, importProgressData } from '../scripts/progress';
 
   const lessonsEl = document.getElementById('lessons-data');
-  const cta = document.getElementById('resume-cta');
-  if (lessonsEl && cta) {
-    try {
-      const lessons = JSON.parse(lessonsEl.textContent || '[]');
-      const progress = loadProgress();
-      if (progress.currentLesson && progress.currentLesson !== 's1') {
-        const current = lessons.find((l: { id: string }) => l.id === progress.currentLesson);
-        if (current) {
-          cta.textContent = `Continue: ${current.title}`;
-          cta.setAttribute('href', current.href);
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to restore resume CTA', e);
+  const card = document.getElementById('continue-card');
+  const label = document.getElementById('continue-label');
+  const title = document.getElementById('continue-title');
+  const statLessons = document.getElementById('stat-lessons');
+  const statLabs = document.getElementById('stat-labs');
+
+  try {
+    const progress = loadProgress();
+
+    if (statLessons) {
+      const suffix = statLessons.querySelector('span');
+      statLessons.textContent = String(progress.completedLessons.length);
+      if (suffix) statLessons.appendChild(suffix);
     }
+    if (statLabs) {
+      const suffix = statLabs.querySelector('span');
+      statLabs.textContent = String(progress.completedLabs.length);
+      if (suffix) statLabs.appendChild(suffix);
+    }
+
+    if (lessonsEl && card) {
+      const lessons = JSON.parse(lessonsEl.textContent || '[]');
+      const hasStarted = progress.completedLessons.length > 0 || progress.currentLesson !== 's1';
+      const current = lessons.find((l: { id: string }) => l.id === progress.currentLesson) || lessons[0];
+      if (current) {
+        card.setAttribute('href', current.href);
+        if (label) label.textContent = hasStarted ? 'Continue' : 'Start Here';
+        if (title) title.textContent = current.title;
+      }
+    }
+
+    document.querySelectorAll<HTMLDetailsElement>('[data-accordion-module]').forEach((acc) => {
+      if (acc.querySelector(`[data-lesson-id="${progress.currentLesson}"]`)) {
+        acc.setAttribute('open', '');
+      }
+    });
+
+    // Settings: Progress export/import
+    const exportBtn = document.getElementById('export-progress');
+    const importBtn = document.getElementById('import-progress');
+    const importFile = document.getElementById('import-file') as HTMLInputElement;
+
+    exportBtn?.addEventListener('click', () => {
+      const json = exportProgressData();
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `weapon-progress-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    importBtn?.addEventListener('click', () => importFile?.click());
+    importFile?.addEventListener('change', async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const text = await file.text();
+      const result = importProgressData(text);
+      if (result) {
+        alert('Progress imported successfully! Reloading...');
+        window.location.reload();
+      } else {
+        alert('Failed to import progress. Invalid file format.');
+      }
+      importFile.value = '';
+    });
+  } catch (e) {
+    console.warn('Failed to hydrate dashboard', e);
   }
 </script>

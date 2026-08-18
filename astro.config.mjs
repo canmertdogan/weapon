@@ -11,6 +11,9 @@ const base = '/weapon/';
 export default defineConfig({
   output: 'static',
   base,
+  redirects: {
+    '/course': base,
+  },
   markdown: {
     remarkPlugins: [[remarkBaseLinks, { base }]],
     rehypePlugins: [rehypeShiki],
