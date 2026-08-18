@@ -145,12 +145,7 @@ export function getModuleProgress(moduleId: string, totalLessons: number): numbe
 }
 
 export function isModuleLocked(moduleId: string, moduleOrder: string[] = MODULE_ORDER): boolean {
-  const progress = loadProgress();
-  const currentIndex = moduleOrder.indexOf(moduleId);
-  if (currentIndex <= 0) return false;
-  const prevModule = moduleOrder[currentIndex - 1];
-  const prevModuleLessons = MODULE_LESSONS[prevModule] || [];
-  return prevModuleLessons.some((l) => !progress.completedLessons.includes(l));
+  return false;
 }
 
 export function updateRankBadge(): void {
