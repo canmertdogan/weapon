@@ -15,7 +15,7 @@
     "format": "PE",
     "name": "mystery.exe",
     "file": "/binaries/lab-01.hex",
-    "bytes": 2048
+    "bytes": 4608
   },
   "questions": [
     {
@@ -28,13 +28,14 @@
       "id": "q2",
       "type": "string",
       "prompt": "At what file offset does the string begin? (format: 0x...)",
-      "answer": "0x6b"
+      "answer": "0x300"
     }
   ],
   "hints": [
+    "Check e_lfanew at offset 0x3C first — is it where you'd expect for a normal PE?",
     "Strings are not always in a dedicated section.",
-    "The DOS header has a large unused region after the standard fields.",
-    "Scan the bytes between the MZ header and the PE signature."
+    "This file's DOS stub is unusually large. A bloated stub is itself a red flag worth noticing before you even start scanning it.",
+    "Scan the bytes between the MZ header and the PE signature — the whole region, not just the first screen of it."
   ],
   "methodology": "## Investigation Methodology\n\n### 1. Initial Triage\n- Load the binary in a hex editor (Ghidra, HxD, ImHex, or the built-in viewer)\n- Verify the `MZ` signature at offset `0x0` \u2014 confirms PE format\n- Read `e_lfanew` at offset `0x3C` (little-endian) to locate NT Headers\n\n### 2. Identify Search Regions\n- Standard `strings` tools scan mapped sections (`.text`, `.rdata`, `.data`)\n- The DOS stub (between offset `0x40` and `e_lfanew`) is **not** a mapped section\n- This region is commonly used to hide strings, shellcode, or configuration\n\n### 3. Targeted Search\n- Navigate to the DOS stub region in the hex editor\n- Search for ASCII strings or the `WEAPON{` prefix\n- Note the file offset of any findings\n\n### 4. Verification\n- Confirm the string is complete and properly formatted\n- Cross-reference: does the offset fall within the DOS stub range?\n- Document the finding with offset and context",
   "commonPitfalls": [
@@ -58,5 +59,5 @@
     "Write a script to automatically scan the DOS stub for ASCII strings",
     "Research: How do packers abuse the DOS stub region?"
   ],
-  "solution": "## Hidden String Hunt \u2014 Solution\n\nThe hidden string `WEAPON{first_flag}` is stored at file offset `0x6B` in the DOS stub region \u2014 right after the standard \"This program cannot be run in DOS mode\" message, in the padding between the DOS header and the NT headers.\n\n**Why it's obscured**: Most `strings` tools with default settings only look for ASCII runs inside mapped sections. The DOS stub is often skipped because it's before the PE signature.\n\n**How to find it**:\n1. Open the file in a hex editor.\n2. The `e_lfanew` field at offset `0x3C` points to the PE signature (here, `0x80`).\n3. Everything between `0x40` and `e_lfanew` is the DOS stub \u2014 classic hiding spot.\n4. Search for ASCII in that range, or scan for the `WEAPON{` prefix."
+  "solution": "## Hidden String Hunt \u2014 Solution\n\nThe hidden string `WEAPON{first_flag}` is stored at file offset `0x300`, inside the DOS stub region \u2014 well past the \"This program cannot be run in DOS mode\" message, in the padding between the DOS header and the NT headers.\n\n**Why it's obscured**: Most `strings` tools with default settings only look for ASCII runs inside mapped sections. The DOS stub is often skipped because it's before the PE signature. Just as importantly here, the stub itself is far bigger than a normal one \u2014 real PE files have `e_lfanew` around `0x80\u20130xF0`; this file's `e_lfanew` is `0x640`. That's not decoration, it's the actual hiding mechanism: a bloated DOS stub gives an attacker room to bury a whole payload before the real header even starts, and most people never think to check whether `e_lfanew` looks abnormally large in the first place.\n\n**How to find it**:\n1. Open the file in a hex editor.\n2. The `e_lfanew` field at offset `0x3C` points to the PE signature. Read it \u2014 here it's `0x640`, not the usual `~0x80`. That size discrepancy is the tell.\n3. Everything between `0x40` and `e_lfanew` is the DOS stub \u2014 in this file, over 1.5KB of it, not the usual few dozen bytes.\n4. Use Find to search for the `WEAPON{` prefix rather than eyeballing the whole region."
 }

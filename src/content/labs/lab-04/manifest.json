@@ -15,7 +15,7 @@
     "format": "raw",
     "name": "sample.bin",
     "file": "/binaries/lab-04.hex",
-    "bytes": 320
+    "bytes": 8192
   },
   "questions": [
     {
@@ -40,7 +40,7 @@
   "hints": [
     "Open the file in the hex viewer and read the ASCII column.",
     "The strings are not in a standard PE section \u2014 scan the whole file.",
-    "The URL is near offset 0x40, the mutex near 0xB0."
+    "The file is 8KB of realistic filler around three real strings — Find is faster than scrolling. The URL sits around offset 0xC40, the persistence path around 0x1420, the mutex around 0x1B90."
   ],
   "methodology": "## Investigation Methodology\n\n### 1. Load & Scan\n- Open the binary in the hex viewer or a hex editor\n- Enable ASCII/UTF-8 column view\n- Scroll through the entire file \u2014 raw binaries have no section structure\n\n### 2. Identify IOC Categories\nLook for these telltale patterns:\n\n| Category | Patterns | Example |\n|----------|----------|---------|\n| **C2/Network** | `http://`, `https://`, IP addresses, domains | `http://c2.example.com/gate.php` |\n| **Persistence** | `Run`, `RunOnce`, `Services`, `Startup`, `Winlogon` | `Software\\Microsoft\\Windows\\CurrentVersion\\Run` |\n| **Mutex** | `Global\\`, `Local\\`, `Mutex`, `MUTEX` | `Global\\mx_123` |\n| **File Paths** | `%APPDATA%`, `%TEMP%`, `%SYSTEM%`, `\\\\.\\` | `%APPDATA%\\svchost.exe` |\n| **Crypto** | `AES`, `RSA`, `RC4`, `XOR`, base64 strings | `U2FsdGVkX1...` |\n\n### 3. Extract & Document\n- Note the **file offset** of each string\n- Record the **full string** exactly as it appears\n- Categorize each finding\n- Build the behavioral profile\n\n### 4. Correlate Findings\n- C2 URL + Persistence + Mutex = **Implant/Beacon**\n- C2 URL only = Downloader/Stage 1\n- Persistence + File drop = Dropper\n- Mutex only = Single-instance component (part of larger malware)\n\n### 5. Pivot to Deeper Analysis\n- Use C2 domain for infrastructure hunting (VirusTotal, URLhaus)\n- Use mutex for host-based detection\n- Use persistence path for registry monitoring",
   "commonPitfalls": [
@@ -69,5 +69,5 @@
     "Research: How do malware authors encode/encrypt strings to evade `strings`?",
     "Build a string extractor that handles XOR, ROT, base64, and custom encodings"
   ],
-  "solution": "## Advanced String Hunt \u2014 Solution\n\nThe binary plants three telling strings:\n\n1. **C2 URL**: `http://malware-c2.xyz/gate.php` (offset 0x40) \u2014 the command-and-control endpoint.\n2. **Persistence key**: `Software\\Microsoft\\Windows\\CurrentVersion\\Run` (offset 0x70) \u2014 the classic autostart location.\n3. **Mutex**: `Global\\mx_0x1A2B3C` (offset 0xB0) \u2014 a single-instance guard so only one copy runs.\n\n**Methodology**: a URL + a Run key + a mutex together describe a program that phones home, persists, and avoids duplicates \u2014 a textbook implant profile."
+  "solution": "## Advanced String Hunt \u2014 Solution\n\nThe binary plants three telling strings inside 8KB of realistic filler \u2014 nothing is visible without scrolling or searching:\n\n1. **C2 URL**: `http://malware-c2.xyz/gate.php` (offset 0xC40) \u2014 the command-and-control endpoint.\n2. **Persistence key**: `Software\\Microsoft\\Windows\\CurrentVersion\\Run` (offset 0x1420) \u2014 the classic autostart location.\n3. **Mutex**: `Global\\mx_0x1A2B3C` (offset 0x1B90) \u2014 a single-instance guard so only one copy runs.\n\n**Methodology**: a URL + a Run key + a mutex together describe a program that phones home, persists, and avoids duplicates \u2014 a textbook implant profile. Use the hex viewer's Find to jump straight to each string rather than scrolling byte by byte."
 }

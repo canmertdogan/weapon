@@ -70,6 +70,16 @@ export function updateProgressUI(): void {
   updateModuleCta();
 }
 
+// The header's progress ring + rank badge are chrome, not information, until
+// a visitor has actually completed something — showing "0%"/"RECRUIT" to
+// every brand-new visitor reads as broken/empty rather than as a feature.
+export function updateHeaderProgressVisibility(): void {
+  const progress = loadProgress();
+  const hasStarted = progress.completedLessons.length > 0 || progress.completedLabs.length > 0;
+  const el = document.getElementById('header-progress');
+  if (el) el.hidden = !hasStarted;
+}
+
 // Fills every `.progress-ring[data-overall-progress]` with real completion %.
 export function updateOverallProgress(): void {
   const { pct } = getOverallProgress();
@@ -118,6 +128,7 @@ export function updateRoadmapNodes(): void {
 }
 
 export function updateDashboardUI(): void {
+  updateHeaderProgressVisibility();
   updateOverallProgress();
   updateRankProgressUI();
   updateRoadmapNodes();

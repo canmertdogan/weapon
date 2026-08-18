@@ -16,7 +16,7 @@
     "format": "PE",
     "name": "injector.exe",
     "file": "/binaries/lab-05.hex",
-    "bytes": 2048
+    "bytes": 9728
   },
   "questions": [
     {
@@ -49,11 +49,11 @@
     "A single suspicious API is weak; a cluster is a smoking gun.",
     "Think about what 'remote' and 'ex' (extended) suffixes imply."
   ],
-  "methodology": "## Investigation Methodology\n\n### 1. Parse the Import Directory\n- Open in Ghidra \u2192 Window \u2192 Imports\n- Or use PE-bear / CFF Explorer \u2192 Import Table tab\n- Identify all imported DLLs and their functions\n\n### 2. Map APIs to Capabilities\nCreate a capability matrix:\n\n| Capability | Key APIs | DLL |\n|------------|----------|-----|\n| **Process Injection** | `VirtualAllocEx`, `WriteProcessMemory`, `CreateRemoteThread`, `OpenProcess`, `VirtualProtectEx` | KERNEL32 |\n| **Code Execution** | `CreateProcess`, `WinExec`, `ShellExecute`, `CreateThread` | KERNEL32, SHELL32 |\n| **Persistence** | `RegSetValueEx`, `CreateService`, `CopyFile`, `WriteFile` | ADVAPI32, KERNEL32 |\n| **Network/C2** | `InternetOpen`, `InternetConnect`, `HttpSendRequest`, `WSASocket`, `connect` | WININET, WS2_32 |\n| **Anti-Analysis** | `IsDebuggerPresent`, `CheckRemoteDebuggerPresent`, `NtQueryInformationProcess` | KERNEL32, NTDLL |\n| **Credential Access** | `LsaEnumerateLogonSessions`, `CredEnumerate`, `CryptUnprotectData` | SECUR32, CRYPT32 |\n| **Discovery** | `GetSystemInfo`, `GetVersionEx`, `EnumProcesses`, `NetShareEnum` | KERNEL32, PSAPI, NETAPI32 |\n\n### 3. Identify Clusters\n- **Single API**: Low confidence (legitimate use common)\n- **2-3 related APIs**: Medium confidence\n- **Full chain (4+ APIs in sequence)**: High confidence \u2014 indicates intentional capability\n\n### 4. Analyze Import Characteristics\n- **Ordinal vs Name imports**: Malware often uses ordinals to hinder analysis\n- **Delayed imports**: Loaded on first call \u2014 can hide capability\n- **Forwarded exports**: API forwarded to another DLL (e.g., `NtCreateThread` \u2192 `ntdll`)\n- **Missing imports**: Statically linked, or resolved dynamically via `GetProcAddress`\n\n### 5. Dynamic Resolution Check\n- Search for `GetProcAddress` / `LoadLibrary` calls in code\n- Look for hashed API names (common in shellcode)\n- Check for manual PE parsing (import table walk)\n\n### 6. Document & Report\n- List DLLs and their imported functions\n- Highlight suspicious clusters\n- Note any dynamic resolution patterns\n- Assess overall capability profile",
+  "methodology": "## Investigation Methodology\n\n### 1. Parse the Import Directory\n- Open in Ghidra → Window → Imports\n- Or use PE-bear / CFF Explorer → Import Table tab\n- Identify all imported DLLs and their functions\n\n### 2. Map APIs to Capabilities\nCreate a capability matrix:\n\n| Capability | Key APIs | DLL |\n|------------|----------|-----|\n| **Process Injection** | `VirtualAllocEx`, `WriteProcessMemory`, `CreateRemoteThread`, `OpenProcess`, `VirtualProtectEx` | KERNEL32 |\n| **Code Execution** | `CreateProcess`, `WinExec`, `ShellExecute`, `CreateThread` | KERNEL32, SHELL32 |\n| **Persistence** | `RegSetValueEx`, `CreateService`, `CopyFile`, `WriteFile` | ADVAPI32, KERNEL32 |\n| **Network/C2** | `InternetOpen`, `InternetConnect`, `HttpSendRequest`, `WSASocket`, `connect` | WININET, WS2_32 |\n| **Anti-Analysis** | `IsDebuggerPresent`, `CheckRemoteDebuggerPresent`, `NtQueryInformationProcess` | KERNEL32, NTDLL |\n| **Credential Access** | `LsaEnumerateLogonSessions`, `CredEnumerate`, `CryptUnprotectData` | SECUR32, CRYPT32 |\n| **Discovery** | `GetSystemInfo`, `GetVersionEx`, `EnumProcesses`, `NetShareEnum` | KERNEL32, PSAPI, NETAPI32 |\n\n### 3. Identify Clusters\n- **Single API**: Low confidence (legitimate use common)\n- **2-3 related APIs**: Medium confidence\n- **Full chain (4+ APIs in sequence)**: High confidence — indicates intentional capability\n\n### 4. Analyze Import Characteristics\n- **Ordinal vs Name imports**: Malware often uses ordinals to hinder analysis\n- **Delayed imports**: Loaded on first call — can hide capability\n- **Forwarded exports**: API forwarded to another DLL (e.g., `NtCreateThread` → `ntdll`)\n- **Missing imports**: Statically linked, or resolved dynamically via `GetProcAddress`\n\n### 5. Dynamic Resolution Check\n- Search for `GetProcAddress` / `LoadLibrary` calls in code\n- Look for hashed API names (common in shellcode)\n- Check for manual PE parsing (import table walk)\n\n### 6. Document & Report\n- List DLLs and their imported functions\n- Highlight suspicious clusters\n- Note any dynamic resolution patterns\n- Assess overall capability profile",
   "commonPitfalls": [
-    "Only checking static imports \u2014 missing dynamically resolved APIs",
+    "Only checking static imports — missing dynamically resolved APIs",
     "Confusing `VirtualAlloc` (local) with `VirtualAllocEx` (remote)",
-    "Overlooking `OpenProcess` \u2014 required precursor for remote operations",
+    "Overlooking `OpenProcess` — required precursor for remote operations",
     "Missing delayed imports (Data Directory [13])",
     "Not checking for `GetProcAddress` / `LoadLibrary` usage in code"
   ],
@@ -67,16 +67,16 @@
   ],
   "references": [
     "Lesson SA2: Imports & Exports",
-    "Lesson F4: Executable Formats \u2014 IAT deep dive",
+    "Lesson F4: Executable Formats — IAT deep dive",
     "Microsoft PE/COFF Spec: Import Directory",
-    "MITRE ATT&CK: T1055 (Process Injection) \u2014 API mapping",
+    "MITRE ATT&CK: T1055 (Process Injection) — API mapping",
     "Windows Internals: DLL Loading & API Resolution"
   ],
   "extensions": [
-    "Analyze a packed sample \u2014 find the OEP and dump imports after unpacking",
+    "Analyze a packed sample — find the OEP and dump imports after unpacking",
     "Write a script to auto-detect API clusters in a PE file",
     "Research: How does API hashing work? Implement a resolver",
-    "Compare: Static imports vs. dynamic resolution \u2014 detection strategies"
+    "Compare: Static imports vs. dynamic resolution — detection strategies"
   ],
-  "solution": "## Import Table Analysis \u2014 Solution\n\nAll imports resolve from **KERNEL32.dll**. The cluster is unmistakable:\n\n- `VirtualAllocEx` \u2014 allocate memory in a *remote* process.\n- `WriteProcessMemory` \u2014 write a payload into that memory.\n- `CreateRemoteThread` \u2014 start a thread in the target that runs the payload.\n- `OpenProcess` \u2014 obtain a handle to the target process.\n\nThis is the canonical **process injection** chain. Seeing these four together means the binary is built to inject and execute code in another process."
+  "solution": "## Import Table Analysis — Solution\n\nAll imports resolve from **KERNEL32.dll**. The cluster is unmistakable:\n\n- `VirtualAllocEx` — allocate memory in a *remote* process.\n- `WriteProcessMemory` — write a payload into that memory.\n- `CreateRemoteThread` — start a thread in the target that runs the payload.\n- `OpenProcess` — obtain a handle to the target process.\n\nThis is the canonical **process injection** chain. Seeing these four together means the binary is built to inject and execute code in another process."
 }

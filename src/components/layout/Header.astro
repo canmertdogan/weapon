@@ -26,7 +26,7 @@ const links = [
           <line x1="3" y1="18" x2="21" y2="18"></line>
         </svg>
       </button>
-      <a href={BASE} class="font-display font-bold text-xl tracking-[0.15em] text-accent text-glow select-none">
+      <a href={BASE} class="font-display font-bold text-xl tracking-[0.15em] text-accent select-none">
         WEAPON
       </a>
       <nav class="hidden md:flex items-center gap-1 ml-2" aria-label="Primary">
@@ -39,14 +39,16 @@ const links = [
     </div>
 
     <div class="flex items-center gap-3 relative">
-      <div class="progress-ring progress-ring--sm" data-overall-progress title="Overall course progress">
-        <svg viewBox="0 0 100 100">
-          <circle class="progress-ring-track" cx="50" cy="50" r="42"></circle>
-          <circle class="progress-ring-fill" cx="50" cy="50" r="42"></circle>
-        </svg>
-        <span class="progress-ring-label">0%</span>
+      <div id="header-progress" class="flex items-center gap-3" hidden>
+        <div class="progress-ring progress-ring--sm" data-overall-progress title="Overall course progress">
+          <svg viewBox="0 0 100 100">
+            <circle class="progress-ring-track" cx="50" cy="50" r="42"></circle>
+            <circle class="progress-ring-fill" cx="50" cy="50" r="42"></circle>
+          </svg>
+          <span class="progress-ring-label">0%</span>
+        </div>
+        <div class="rank-badge text-sm hidden sm:block" id="rank-badge">RECRUIT</div>
       </div>
-      <div class="rank-badge text-sm hidden sm:block" id="rank-badge">RECRUIT</div>
 
       <div id="mobile-nav" class="nav-dropdown md:hidden" hidden>
         {links.map((link) => (

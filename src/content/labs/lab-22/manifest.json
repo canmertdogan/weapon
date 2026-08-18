@@ -17,15 +17,15 @@
   "binary": {
     "format": "PE",
     "name": "packed.exe",
-    "hex": "4d5a00000000000000000000000000000000000000000000000000000000000055505821000000000000000000000000000000000000000000000000800000000e1fba0e00b409cd21b8014ccd21546869732070726f6772616d2063616e6e6f742062652072756e20696e20444f53206d6f64652e0d0d0a24000000000000005045000064860200103a8b5f0000000000000000f00022000b020e1e0000000000000000000000000050000000100000000000400100000000100000000100000600000000000000060000000000000000600000000200000000000003000081000010000000000000100000000000000000100000000000001000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000555058300000000000400000001000000000000000020000000000000000000000000000200000e0555058310000000000010000005000000001000000020000000000000000000000000000200000e000000000000000000000000000000000000000000000000000000000000000000000000000000000ee2c6c6bdcb13a09ebd0b53df710c673d2a1eb9976d7f969dac72a7ab372516910eff5bf435fdf0dfb10a0aaeeda707dc87159dd6dd01f05ae432d47b01d36ce61e5c8d315bcc6c91b58d49a40a27b6d0b713e0fd5ea216dbafa2c3277df7b5edcc783878658ab7b9acfad5ff752f7c59ef98984f57609d487b2781ec229031b5c58c7fd7389d9c86121a04ee14131b43139d74a699aa03431ed7b762d5776175687072f8a2d6e69862d2d3b889a0165c89973f66eb39902317b447c48ef94c2cd170f4c109374f6ab4e26d9f05e46b1cf1cfd7bcac133a1dca383b581d7b15abf717384cffe645722cd4db075d92b52311267a5cd727005840f6137dfdcb512",
-    "bytes": 768
+    "file": "/binaries/lab-22.hex",
+    "bytes": 20992
   },
   "questions": [
     {
       "id": "q1",
       "type": "number",
-      "prompt": "The compressed payload region runs from 0x200 to 0x300. How many bytes is that, in decimal?",
-      "answer": "256"
+      "prompt": "The compressed payload region runs from 0x200 to 0x5200. How many bytes is that, in decimal?",
+      "answer": "20480"
     },
     {
       "id": "q2",
@@ -41,7 +41,7 @@
     }
   ],
   "hints": [
-    "0x300 - 0x200 is the region's length, not either endpoint's value.",
+    "0x5200 - 0x200 is the region's length, not either endpoint's value.",
     "Look at the Optional Header field that tells the loader how many bytes of virtual address space to reserve — packers keep this large even though the file itself is small.",
     "You don't need to decompress the payload by hand — you just need to catch it after the packer decompresses it for you, at the moment it hands off to OEP."
   ],
@@ -78,5 +78,5 @@
     "Practice: Unpack ASPack/Themida/VMProtect samples",
     "Write a YARA rule for UPX stub + compressed payload signature"
   ],
-  "solution": "## Manual Unpacking Challenge — Solution\n\n1. **256 bytes** (`0x300 - 0x200`) — the compressed payload region. On disk this stays small; UPX's whole premise is that a short decompression stub can inflate it back to full size at runtime.\n2. **SizeOfImage** — the Optional Header field the loader uses to reserve virtual address space for the *unpacked* image. A packed PE's `SizeOfImage` is typically far larger than its on-disk file size — a strong static signal that something gets decompressed after load, before you even look at section entropy.\n3. **Dump** (a memory/process dump) — set a breakpoint at the tail of the unpacking stub (right before it jumps to OEP), let it run until the payload is decompressed in memory, then dump that memory region to disk. The dumped image now has real, readable code and strings — the packer's obfuscation only ever protected the *file on disk*, never the process once it's actually running."
+  "solution": "## Manual Unpacking Challenge — Solution\n\n1. **20480 bytes** (`0x5200 - 0x200`) — the compressed payload region, genuinely high-entropy data (not a placeholder). On disk this stays a fraction of the size UPX0's virtual size reserves for it; UPX's whole premise is that a short decompression stub can inflate it back to full size at runtime.\n2. **SizeOfImage** — the Optional Header field the loader uses to reserve virtual address space for the *unpacked* image. A packed PE's `SizeOfImage` (here, `0xC000` — far more than the ~21KB UPX1 actually occupies on disk) is typically far larger than its on-disk file size — a strong static signal that something gets decompressed after load, before you even look at section entropy.\n3. **Dump** (a memory/process dump) — set a breakpoint at the tail of the unpacking stub (right before it jumps to OEP), let it run until the payload is decompressed in memory, then dump that memory region to disk. The dumped image now has real, readable code and strings — the packer's obfuscation only ever protected the *file on disk*, never the process once it's actually running."
 }

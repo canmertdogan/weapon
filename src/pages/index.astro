@@ -20,10 +20,10 @@ const flatLessons = tree.flatMap((m) => m.lessons.map((l) => ({ id: l.id, title:
   <section class="py-16 md:py-24 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
     <div class="text-center lg:text-left">
       <p class="font-mono text-sm text-accent tracking-[0.35em] uppercase mb-4">[ Field Manual ]</p>
-      <h1 class="text-5xl md:text-7xl font-display font-bold tracking-[0.12em] mb-6 text-accent text-glow">
+      <h1 class="text-5xl md:text-7xl font-display font-bold tracking-[0.12em] mb-6 text-accent">
         WEAPON
       </h1>
-      <p class="font-mono text-sm text-fg-muted mb-6 cursor-blink">&gt; reverse_engineering.init()</p>
+      <p class="font-mono text-sm text-fg-muted mb-6">&gt; reverse_engineering.init()</p>
       <p class="text-xl md:text-2xl text-fg-muted max-w-xl mx-auto lg:mx-0 text-balance mb-8">
         A reverse engineering startup course. Binary analysis, assembly, debugging, and Windows internals — taught through interactive investigation.
       </p>
@@ -31,7 +31,6 @@ const flatLessons = tree.flatMap((m) => m.lessons.map((l) => ({ id: l.id, title:
         <a id="resume-cta" href={`${BASE}course`} class="btn btn-primary text-base px-8 py-3">Begin the Course</a>
         <a href={`${BASE}labs`} class="btn btn-secondary text-base px-8 py-3">View Labs</a>
       </div>
-      <p class="mt-4 font-mono text-xs text-fg-muted">No signup. No backend. Runs entirely in your browser.</p>
       <div class="mt-10 flex flex-wrap justify-center lg:justify-start gap-2 font-mono text-xs text-fg-muted">
         <span class="badge badge-current">Static Analysis</span>
         <span class="badge badge-current">Dynamic Analysis</span>
@@ -60,20 +59,7 @@ sample.bin: PE32+ executable (console) x86-64
   401032: e8 c9 00 00 00        call   401100 &lt;check_license&gt;
 
 <span class="text-accent-bright">$</span> <span class="text-fg-muted"># unknown CALL — what does it invoke?</span>
-<span class="text-accent-bright">$</span> status: <span class="text-accent-bright">investigating entry point</span><span class="cursor-blink"></span></code></pre>
-    </div>
-  </section>
-
-  <section class="py-4" aria-label="Recommended companion course">
-    <div class="max-w-3xl mx-auto">
-      <a href="https://canmertdogan.github.io/storage/helper/mxdr-l1-soc-crash-course/index.html" target="_blank" rel="noreferrer" class="card card-hover flex flex-col sm:flex-row items-start sm:items-center gap-4 no-underline">
-        <div class="flex-1">
-          <p class="font-mono text-xs text-accent mb-1">NEW TO CYBERSECURITY?</p>
-          <h3 class="text-lg mb-1">SOC Analyst's Handbook</h3>
-          <p class="text-sm text-fg-muted">Try this core course module first — an interactive L1 SOC/MXDR training platform with 33 modules and a live incident-triage simulator.</p>
-        </div>
-        <span class="btn btn-secondary flex-shrink-0">Open Handbook <span aria-hidden="true">↗</span></span>
-      </a>
+<span class="text-accent-bright">$</span> status: <span class="text-accent-bright">investigating entry point</span></code></pre>
     </div>
   </section>
 
@@ -149,6 +135,19 @@ sample.bin: PE32+ executable (console) x86-64
         <h3 class="text-lg mb-2">Hands-on</h3>
         <p class="text-sm text-fg-muted">Interactive visualizers, a safe instruction playground, and browser-based labs. Practice without infrastructure.</p>
       </div>
+    </div>
+  </section>
+
+  <section class="py-4" aria-label="Recommended companion course">
+    <div class="max-w-3xl mx-auto">
+      <a href="https://canmertdogan.github.io/storage/helper/mxdr-l1-soc-crash-course/index.html" target="_blank" rel="noreferrer" class="card card-hover flex flex-col sm:flex-row items-start sm:items-center gap-4 no-underline">
+        <div class="flex-1">
+          <p class="font-mono text-xs text-accent mb-1">NEW TO CYBERSECURITY?</p>
+          <h3 class="text-lg mb-1">SOC Analyst's Handbook</h3>
+          <p class="text-sm text-fg-muted">Try this core course module first — an interactive L1 SOC/MXDR training platform with 33 modules and a live incident-triage simulator.</p>
+        </div>
+        <span class="btn btn-secondary flex-shrink-0">Open Handbook <span aria-hidden="true">↗</span></span>
+      </a>
     </div>
   </section>
 
