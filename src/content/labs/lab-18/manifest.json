@@ -1,0 +1,89 @@
+{
+  "id": "lab-18",
+  "title": "Call Stack Reconstruction",
+  "module": "assembly",
+  "lesson": "a4",
+  "description": "Reconstruct the stack frame of a simple function from its prologue and epilogue.",
+  "difficulty": "Medium",
+  "estimatedTime": 15,
+  "prerequisites": [
+    "a4-stack-functions",
+    "a1-registers-movement",
+    "x64 calling convention",
+    "Stack frame layout (prologue/epilogue)",
+    "Shadow space / home space"
+  ],
+  "binary": null,
+  "code": {
+    "labels": {},
+    "instructions": [
+      { "address": 0, "op": "push", "args": ["rbp"] },
+      { "address": 1, "op": "mov", "args": ["rbp", "rsp"] },
+      { "address": 2, "op": "sub", "args": ["rsp", "0x10"] },
+      { "address": 3, "op": "mov", "args": ["rax", "0x41"] },
+      { "address": 4, "op": "mov", "args": ["rbx", "0x42"] },
+      { "address": 5, "op": "mov", "args": ["rsp", "rbp"] },
+      { "address": 6, "op": "pop", "args": ["rbp"] },
+      { "address": 7, "op": "ret", "args": [] }
+    ]
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "type": "string",
+      "prompt": "What does the first instruction (push rbp) save on the stack? (one word)",
+      "answer": "frame"
+    },
+    {
+      "id": "q2",
+      "type": "string",
+      "prompt": "After 'sub rsp, 0x10', how many bytes of local space are reserved? (decimal)",
+      "answer": "16"
+    },
+    {
+      "id": "q3",
+      "type": "string",
+      "prompt": "Which register acts as the frame pointer after 'mov rbp, rsp'?",
+      "answer": "rbp"
+    },
+    {
+      "id": "q4",
+      "type": "string",
+      "prompt": "What does the final 'ret' instruction pop into RIP?",
+      "answer": "return address"
+    }
+  ],
+  "hints": [
+    "The prologue is push rbp / mov rbp, rsp / sub rsp, N.",
+    "0x10 in decimal is 16.",
+    "RBP points at the saved caller's frame pointer; RIP is restored by ret."
+  ],
+  "methodology": "## Investigation Methodology\n\n### 1. Standard Prologue (Frame Setup)\n```asm\npush rbp              ; Save caller's RBP (8 bytes)\nmov  rbp, rsp         ; RBP = current RSP (frame base)\nsub  rsp, N           ; Reserve N bytes for locals\n```\n\n### 2. Stack Layout After Prologue\n```\nHigher addresses\n+------------------+ <-- RSP (after sub)\n| Local variables  | (N bytes)\n| ...              |\n+------------------+ <-- RBP (frame pointer)\n| Saved RBP        | (8 bytes) ← old RBP\n+------------------+ <-- RBP + 8\n| Return address   | (8 bytes) ← pushed by CALL\n+------------------+ <-- RBP + 16\n| Home space       | (32 bytes = 4x8) for RCX,RDX,R8,R9\n+------------------+ <-- RBP + 48\n| Arguments 5+     | (on stack, if >4 args)\nLower addresses\n```\n\n### 3. Frame Pointer (RBP) vs Stack Pointer (RSP)\n- **RBP**: Fixed reference point for this frame\n- **RSP**: Moves with pushes/pops/allocations\n- Locals at `[rbp - offset]`, Args at `[rbp + offset]`\n\n### 4. Standard Epilogue (Frame Teardown)\n```asm\nmov  rsp, rbp         ; RSP = RBP (deallocate locals)\npop  rbp              ; Restore caller's RBP\nret                   ; Pop return address → RIP\n```\n\n### 5. Shadow Space / Home Space (Win64)\n- Caller allocates 32 bytes (4 slots) before call\n- Callee *may* use it to spill register args\n- Not part of callee's `sub rsp, N`\n\n### 6. Frame Pointer Omission (FPO) / Optimization\n- Compiler may omit `push rbp` / `mov rbp, rsp`\n- RBP used as general register\n- Locals addressed relative to RSP\n- **Debug info (PDB) or heuristics needed** to reconstruct",
+  "commonPitfalls": [
+    "Confusing saved RBP (at [RBP]) with return address (at [RBP+8])",
+    "Forgetting the 32-byte shadow space (home space) in Win64",
+    "Assuming RBP is always frame pointer — FPO breaks this",
+    "Misreading `sub rsp, 0x10` as 10 decimal (it's 16)",
+    "Not accounting for stack alignment (16-byte boundary before call)"
+  ],
+  "tools": [
+    "Ghidra (Function Graph, Stack view)",
+    "Binary Ninja (Stack layout view)",
+    "IDA Pro (Frame Pointers, Stack view)",
+    "x64dbg (Registers + Stack view)",
+    "WinDbg (kv - stack trace with frame info)"
+  ],
+  "references": [
+    "Lesson A4: Stack & Functions",
+    "Microsoft x64 Calling Convention",
+    "Agner Fog: Calling Conventions",
+    "Ghidra Stack Frame Analysis"
+  ],
+  "extensions": [
+    "Analyze a function with FPO (no RBP frame) — reconstruct from RSP",
+    "Trace a function with 6+ arguments — find args on stack",
+    "Research: How does `__fastcall` / vectorcall differ?",
+    "Practice: Dump stack in x64dbg at function entry, map each slot"
+  ],
+  "solution": "## Call Stack Reconstruction — Solution\n\nThe function follows the standard frame layout:\n\n1. **push rbp** — saves the *caller's* frame pointer (the value RBP held before this function).\n2. **mov rbp, rsp** — RBP becomes this function's frame pointer.\n3. **sub rsp, 0x10** — reserves 16 bytes (0x10) for locals.\n4. Body uses [rbp-...] for locals and [rbp+...] for args/saved values.\n5. **mov rsp, rbp** / **pop rbp** — restores RSP then the caller's RBP.\n6. **ret** — pops the *return address* (pushed by CALL) into RIP.\n\n**Answers**: 1) caller's frame pointer 2) 16 3) RBP 4) return address."
+}

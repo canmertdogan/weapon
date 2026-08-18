@@ -1,0 +1,82 @@
+{
+  "id": "lab-09",
+  "title": "Execution Trace",
+  "module": "debugging",
+  "lesson": "d3",
+  "description": "Trace a loop to determine its final state without stepping every iteration.",
+  "difficulty": "Medium",
+  "estimatedTime": 15,
+  "prerequisites": [
+    "d3-execution-flow",
+    "a3-control-flow",
+    "a2-arithmetic-logic",
+    "Loop analysis patterns",
+    "Conditional breakpoints"
+  ],
+  "binary": null,
+  "code": {
+    "labels": { "loop": 2 },
+    "instructions": [
+      { "address": 0, "op": "mov", "args": ["rax", "0"] },
+      { "address": 1, "op": "mov", "args": ["rcx", "3"] },
+      { "address": 2, "op": "add", "args": ["rax", "rcx"] },
+      { "address": 3, "op": "sub", "args": ["rcx", "1"] },
+      { "address": 4, "op": "cmp", "args": ["rcx", "0"] },
+      { "address": 5, "op": "jne", "args": ["loop"] },
+      { "address": 6, "op": "ret", "args": [] }
+    ]
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "type": "string",
+      "prompt": "How many times does the ADD instruction execute? (decimal)",
+      "answer": "3"
+    },
+    {
+      "id": "q2",
+      "type": "string",
+      "prompt": "What is the final value of RAX? (decimal)",
+      "answer": "6"
+    },
+    {
+      "id": "q3",
+      "type": "string",
+      "prompt": "What is the value of RCX when the loop exits? (decimal)",
+      "answer": "0"
+    }
+  ],
+  "hints": [
+    "The loop body adds RCX to RAX, then decrements RCX.",
+    "RCX starts at 3: 3+0, then 2, then 1, then 0 exits.",
+    "3 + 2 + 1 = 6."
+  ],
+  "methodology": "## Investigation Methodology\n\n### 1. Identify Loop Structure\n```\n    mov rax, 0        ; accumulator\n    mov rcx, 3        ; counter\nloop:\n    add rax, rcx      ; body\n    sub rcx, 1        ; decrement\n    cmp rcx, 0        ; condition\n    jne loop          ; back-edge\n    ret\n```\n\n### 2. Trace First Iteration (Manually)\n- Iteration 1: RAX=0+3=3, RCX=3-1=2, cmp 2≠0 → loop\n\n### 3. Generalize Pattern\n- RCX counts down: N, N-1, ..., 1, 0\n- Loop runs N times (when start=N, condition=RCX≠0)\n- RAX accumulates: N + (N-1) + ... + 1 = N*(N+1)/2\n\n### 4. Apply Formula\n- N = 3\n- Iterations = 3\n- Sum = 3*4/2 = 6\n- Exit RCX = 0\n\n### 5. Debugger Techniques for Loops\n- **Conditional breakpoint**: Break at loop header *only* when RCX=1 (last iteration)\n- **Log breakpoint**: Auto-log RAX, RCX each iteration, no stop\n- **Skip loop**: Break at instruction after loop, observe final state\n- **Trace recording**: Record execution (rr, WinDbg TTD, Intel PT)\n\n### 6. Common Loop Patterns\n| Pattern | Counter Init | Condition | Iterations |\n|---------|--------------|-----------|------------|\n| Count down | N | RCX≠0 | N |\n| Count up | 0 | RCX<N | N |\n| Sentinel | ptr | [ptr]≠0 | Variable |\n| Infinite | — | — | Until break |\n\n### 7. Loop Invariants\n- Identify what doesn't change across iterations\n- `RAX + RCX*(RCX+1)/2` = constant = N*(N+1)/2",
+  "commonPitfalls": [
+    "Stepping every iteration instead of analyzing pattern",
+    "Off-by-one: loop runs N times when counter goes N→1 (not N→0)",
+    "Confusing `cmp rcx, 0` / `jne` (runs while RCX≠0) with `jle` / `jg` patterns",
+    "Missing that `cmp` doesn't modify RCX, only flags"
+  ],
+  "tools": [
+    "x64dbg / GDB (conditional breakpoints, log breakpoints)",
+    "rr (record and replay)",
+    "WinDbg TTD (Time Travel Debugging)",
+    "Intel PT (Processor Trace)",
+    "Binary Ninja Debugger"
+  ],
+  "references": [
+    "Lesson D3: Execution Flow",
+    "Lesson A3: Control Flow — Loops",
+    "Lesson A2: Arithmetic & Logic",
+    "GDB Conditional Breakpoints",
+    "x64dbg Trace Logging"
+  ],
+  "extensions": [
+    "Analyze a loop with 10000 iterations — use conditional breakpoint on last iteration",
+    "Find a nested loop in a malware sample, trace outer * inner iterations",
+    "Research: Loop unrolling — how does compiler transform loops?",
+    "Practice: Use rr to record, then reverse-execute from loop exit"
+  ],
+  "solution": "## Execution Trace — Solution\n\nThe loop computes `3 + 2 + 1`:\n\n| Iteration | RAX | RCX |\n|-----------|-----|-----|\n| start | 0 | 3 |\n| 1 | 3 | 2 |\n| 2 | 5 | 1 |\n| 3 | 6 | 0 |\n\nWhen RCX reaches 0, `cmp rcx, 0` sets ZF=1 and `jne loop` is **not** taken — the loop exits.\n\n1. **ADD executes 3 times**\n2. **RAX = 6**\n3. **RCX = 0** at exit\n\n**Methodology**: a loop is a repeated state machine. Trace the *first* iteration and the *exit condition*, then the count is arithmetic — no need to step 3 (or 300) times."
+}

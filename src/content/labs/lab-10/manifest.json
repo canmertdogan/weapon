@@ -1,0 +1,84 @@
+{
+  "id": "lab-10",
+  "title": "Anti-Debug Bypass",
+  "module": "debugging",
+  "lesson": "d4",
+  "description": "Identify an anti-debugging check and determine how to bypass it.",
+  "difficulty": "Medium",
+  "estimatedTime": 15,
+  "prerequisites": [
+    "d4-anti-debugging",
+    "a3-control-flow",
+    "x64dbg / GDB basics",
+    "Common anti-debug APIs (IsDebuggerPresent, CheckRemoteDebuggerPresent, NtQueryInformationProcess)",
+    "Patch techniques (NOP, conditional jump inversion, register spoofing)"
+  ],
+  "binary": null,
+  "code": {
+    "labels": { "detected": 5, "end": 6 },
+    "instructions": [
+      { "address": 0, "op": "mov", "args": ["rax", "1"] },
+      { "address": 1, "op": "test", "args": ["rax", "rax"] },
+      { "address": 2, "op": "jne", "args": ["detected"] },
+      { "address": 3, "op": "mov", "args": ["rcx", "0"] },
+      { "address": 4, "op": "jmp", "args": ["end"] },
+      { "address": 5, "op": "mov", "args": ["rcx", "1"] },
+      { "address": 6, "op": "ret", "args": [] }
+    ]
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "type": "string",
+      "prompt": "Which API does the value in RAX simulate the result of? (its behavior: nonzero when a debugger is attached)",
+      "answer": "isdebuggerpresent"
+    },
+    {
+      "id": "q2",
+      "type": "string",
+      "prompt": "Which branch is taken when a debugger is present? (success/hidden or detected)",
+      "answer": "detected"
+    },
+    {
+      "id": "q3",
+      "type": "string",
+      "prompt": "To bypass the check by patching, which register's value would you force to 0 at address 0?",
+      "answer": "rax"
+    }
+  ],
+  "hints": [
+    "test rax, rax sets ZF=1 only when RAX is zero.",
+    "A nonzero RAX simulates a debugger being detected.",
+    "Bypass = make the check believe no debugger is present."
+  ],
+  "methodology": "## Investigation Methodology\n\n### 1. Recognize the Pattern\n- `mov rax, 1` / `mov rax, 0` → setting a boolean result\n- `test rax, rax` / `cmp rax, 0` → checking the result\n- `jne` / `je` / `jz` / `jnz` → conditional branch based on check\n\nThis is the **canonical anti-debug check pattern**: call API → test result → branch.\n\n### 2. Identify the Simulated API\n- `IsDebuggerPresent` returns `TRUE` (nonzero) if debugger attached\n- `CheckRemoteDebuggerPresent` returns `TRUE` via output parameter\n- `NtQueryInformationProcess` with `ProcessDebugPort` / `ProcessDebugFlags`\n- PEB `BeingDebugged` flag (offset 0x2 in PEB)\n\nIn this lab: RAX=1 hardcoded → simulates `IsDebuggerPresent` returning `TRUE`.\n\n### 3. Trace Execution Paths\n**Debugger Present (RAX=1)**:\n- `test rax, rax` → ZF=0\n- `jne detected` → **taken** → RCX=1 → return 1 (detected)\n\n**No Debugger (RAX=0)**:\n- `test rax, rax` → ZF=1\n- `jne detected` → **not taken** → fall through\n- `mov rcx, 0` → RCX=0\n- `jmp end` → skip detected branch\n- Return 0 (not detected)\n\n### 4. Bypass Strategies\n| Method | How | Pros | Cons |\n|--------|-----|------|------|\n| **Register Spoof** | Set RAX=0 before `test` | Clean, no binary modification | Requires debugger attach |\n| **NOP the Jump** | Patch `jne` → `nop` (2 bytes: `0F 85` → `90 90`) | Permanent, no debugger needed | Modifies binary |\n| **Invert Jump** | Patch `jne` → `je` (`0F 85` → `0F 84`) | Permanent, flips logic | Modifies binary |\n| **Patch API Call** | If real API: hook/redirect return value | Works on real binaries | More complex |\n| **PEB Patch** | Set `BeingDebugged` = 0 in PEB | Affects all `IsDebuggerPresent` calls | Process-wide, detectable |\n\n### 5. Verify Bypass\n- Re-run: confirm hidden path executes (RCX=0 returned)\n- Check for secondary checks (multiple anti-debug layers)\n- Ensure functionality preserved (some checks are integrity checks)",
+  "commonPitfalls": [
+    "Patching the wrong instruction — verify address in debugger",
+    "Forgetting that `test rax, rax` is 2 bytes (`48 85 C0`), `jne rel32` is 6 bytes (`0F 85 xx xx xx xx`)",
+    "Missing secondary/tertiary anti-debug checks",
+    "Breaking functionality — some 'checks' are actually used for logic",
+    "Not handling timing checks (RDTSC, GetTickCount) — requires different bypass"
+  ],
+  "tools": [
+    "x64dbg / x32dbg (Windows)",
+    "GDB / GEF / pwndbg (Linux)",
+    "Ghidra (decompiler shows high-level logic)",
+    "Binary Ninja (control flow graph)",
+    "ScyllaHide / TitanHide (anti-anti-debug plugins)"
+  ],
+  "references": [
+    "Lesson D4: Anti-Debugging",
+    "Lesson A3: Control Flow — conditional jumps",
+    "Peter Ferrie: 'Anti-Unpacker Tricks' (reference)",
+    "x64dbg docs: Patching, Breakpoints",
+    "PEB Structure: BeingDebugged flag"
+  ],
+  "extensions": [
+    "Implement a ScyllaHide plugin for a custom anti-debug technique",
+    "Analyze a packed sample (UPX, Themida) — identify all anti-debug checks",
+    "Research: Hardware breakpoint detection (DR0-DR7)",
+    "Research: Timing-based detection (RDTSC, QueryPerformanceCounter)",
+    "Build a script to auto-patch common anti-debug patterns"
+  ],
+  "solution": "## Anti-Debug Bypass — Solution\n\nThe routine simulates `IsDebuggerPresent`:\n\n1. RAX = 1 models **IsDebuggerPresent returning nonzero** (debugger attached).\n2. `test rax, rax` → ZF=0 → `jne detected` **taken** → jumps to the `detected` branch (RCX=1).\n3. To bypass, force **RAX = 0** at address 0 (spoof the API result, or patch `test`/`jne`), so execution takes the hidden path (RCX=0).\n\n**Three equivalent bypasses**: spoof RAX=0, NOP the `jne`, or invert it to `je`. All achieve the same effect — make the check see \"no debugger\"."
+}

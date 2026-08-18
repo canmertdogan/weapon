@@ -1,0 +1,12 @@
+---
+interface Props {
+  data: string;
+  mode?: 'raw' | 'pe';
+  highlightRanges?: { start: number; end: number; label: string; color: string }[];
+  id?: string;
+}
+const { data, mode = 'raw', highlightRanges = [] } = Astro.props;
+const payload = JSON.stringify({ data, mode, highlightRanges });
+---
+
+<div data-weapon-component="hexviewer" data-weapon-props={payload}></div>

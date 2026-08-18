@@ -1,0 +1,82 @@
+{
+  "id": "lab-12",
+  "title": "DLL Import & Load Order",
+  "module": "windows",
+  "lesson": "w4",
+  "description": "Analyze a binary's DLL imports and identify a DLL search-order hijacking opportunity.",
+  "difficulty": "Medium",
+  "estimatedTime": 15,
+  "prerequisites": [
+    "w4-dlls-loader",
+    "sa2-imports-exports",
+    "DLL search order (SafeDllSearchMode)",
+    "KnownDLLs, AppDir, System32, PATH"
+  ],
+  "binary": {
+    "format": "PE",
+    "name": "loader.exe",
+    "file": "/binaries/lab-12.hex",
+    "bytes": 512
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "type": "string",
+      "prompt": "Which imported DLL is a small, commonly-hijacked library that ships with the application (not a system DLL)?",
+      "answer": "version.dll"
+    },
+    {
+      "id": "q2",
+      "type": "string",
+      "prompt": "Which DLL provides network access via InternetOpenW?",
+      "answer": "wininet.dll"
+    },
+    {
+      "id": "q3",
+      "type": "string",
+      "prompt": "Which DLL provides registry persistence via RegCreateKeyExW?",
+      "answer": "advapi32.dll"
+    },
+    {
+      "id": "q4",
+      "type": "string",
+      "prompt": "If an attacker drops a malicious VERSION.dll next to this executable, what kind of attack is it? (two words)",
+      "answer": "dll hijacking"
+    }
+  ],
+  "hints": [
+    "VERSION.dll is a small utility DLL often loaded from the application directory.",
+    "The search order checks the application directory first.",
+    "A DLL in the app directory wins over the system copy."
+  ],
+  "methodology": "## Investigation Methodology\n\n### 1. Enumerate All Imports\n- Ghidra: Window → Imports\n- PE-bear / CFF Explorer → Import Table\n- List: DLL name + function names\n\n### 2. Categorize DLLs by Trust Level\n| Category | Examples | Hijack Risk |\n|----------|----------|-------------|\n| **KnownDLLs** | kernel32.dll, ntdll.dll, user32.dll, advapi32.dll | **None** (loaded from System32 only) |\n| **System DLLs** | wininet.dll, crypt32.dll, ws2_32.dll | Low (SafeDllSearchMode) |\n| **App-local / Optional** | version.dll, msvcp140.dll, custom.dll | **High** (app dir searched first) |\n| **Delay-loaded** | (marked in Delay Import) | Medium (on first call) |\n\n### 3. DLL Search Order (SafeDllSearchMode = ON, default)\n1. Application directory\n2. System directory (System32)\n3. 16-bit System directory (System)\n4. Windows directory\n5. Current working directory\n6. PATH directories\n\n**KnownDLLs** bypass this entirely — always from System32.\n\n### 4. Identify Hijack Candidates\n- Not in KnownDLLs registry key\n- Small, simple API surface (easy to proxy)\n- Loaded early (high impact)\n- Optional / version-specific\n\n**Classic targets**: VERSION.DLL, DWMAPI.DLL, UXTHEME.DLL, PROPSYS.DLL, MSVCR*.DLL\n\n### 5. Verify Attack Surface\n- Check if binary uses `LoadLibrary(\"version.dll\")` (no path) → searches\n- Check if binary uses `LoadLibraryEx` with `LOAD_WITH_ALTERED_SEARCH_PATH`\n- Check manifest for `dependency` → may pin version\n\n### 6. Mitigations\n- `SetDllDirectory(\"\")` / `AddDllDirectory` / `SetDefaultDllDirectories`\n- Manifest with `<dependency>` for side-by-side\n- Code signing + AppLocker / WDAC\n- SafeDllSearchMode (default ON since XP SP2)",
+  "commonPitfalls": [
+    "Assuming all system DLLs are in KnownDLLs — many are not (wininet.dll, etc.)",
+    "Overlooking delay-loaded DLLs — also search on first call",
+    "Confusing `LoadLibrary` (searches) with `LoadLibraryEx` flags",
+    "Missing that CWD is searched *after* System32 in SafeDllSearchMode",
+    "Not checking for absolute paths in imports (rare but possible)"
+  ],
+  "tools": [
+    "Ghidra (Imports, Decompiler for LoadLibrary calls)",
+    "PE-bear / CFF Explorer (Import Table, Delay Import)",
+    "Process Monitor (Procmon) — filter Load Image, see actual path",
+    "ListDLLs (Sysinternals) — runtime loaded DLLs",
+    "DLL Hijack Auditor (tool)"
+  ],
+  "references": [
+    "Lesson W4: DLLs & Loader",
+    "Lesson SA2: Imports & Exports",
+    "Microsoft: Dynamic-Link Library Search Order",
+    "KnownDLLs Registry: HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\KnownDLLs",
+    "MITRE ATT&CK: T1574.001 (DLL Search Order Hijacking)"
+  ],
+  "extensions": [
+    "Write a script to auto-identify hijackable imports in a PE",
+    "Test: Drop a proxy VERSION.dll that logs calls and forwards to real one",
+    "Research: Phantom DLL hijacking (DLLs imported but not in KnownDLLs)",
+    "Analyze: How does `App Paths` registry key affect search order?",
+    "Build a detector for DLL hijacking via Procmon trace analysis"
+  ],
+  "solution": "## DLL Import & Load Order — Solution\n\n1. **VERSION.dll** is the small, app-local library most vulnerable to placement attacks (it's often not a protected system DLL and loads from the app directory).\n2. **WININET.dll** provides the `InternetOpenW` network API.\n3. **ADVAPI32.dll** provides `RegCreateKeyExW` (registry).\n4. Dropping a malicious **VERSION.dll** next to the EXE is **DLL hijacking** — the loader finds the local copy first and maps the attacker's code.\n\n**Methodology**: identify *which* DLL is the weak link, then which directory it loads from."
+}

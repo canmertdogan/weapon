@@ -1,0 +1,87 @@
+{
+  "id": "lab-19",
+  "title": "Stack Smash Analysis",
+  "module": "exploit-dev",
+  "lesson": "e1",
+  "description": "Given a vulnerable function's disassembly, determine exactly how many bytes of overflow it takes to reach the saved return address.",
+  "difficulty": "Medium",
+  "estimatedTime": 20,
+  "prerequisites": [
+    "e1-stack-overflows",
+    "a4-stack-functions",
+    "Stack frame layout (prologue/epilogue)",
+    "Buffer overflow mechanics",
+    "Stack canaries /GS"
+  ],
+  "binary": null,
+  "code": {
+    "labels": {},
+    "instructions": [
+      { "address": 0, "op": "push", "args": ["rbp"] },
+      { "address": 1, "op": "mov", "args": ["rbp", "rsp"] },
+      { "address": 2, "op": "sub", "args": ["rsp", "0x30"] },
+      { "address": 3, "op": "lea", "args": ["rax", "[rbp-0x30]"] },
+      { "address": 4, "op": "mov", "args": ["rdi", "rax"] },
+      { "address": 5, "op": "mov", "args": ["rsi", "[rbp+0x10]"] },
+      { "address": 6, "op": "call", "args": ["strcpy"] },
+      { "address": 7, "op": "leave", "args": [] },
+      { "address": 8, "op": "ret", "args": [] }
+    ]
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "type": "string",
+      "prompt": "sub rsp, 0x30 reserves the local buffer. How many bytes must you write into it before you start overwriting the saved return address? (decimal)",
+      "answer": "56"
+    },
+    {
+      "id": "q2",
+      "type": "string",
+      "prompt": "What is the first thing on the stack you overwrite once you write past the buffer itself, before you reach the return address?",
+      "answer": "saved rbp"
+    },
+    {
+      "id": "q3",
+      "type": "string",
+      "prompt": "Which register holds the base of the current stack frame, making rbp-relative offsets meaningful?",
+      "answer": "rbp"
+    }
+  ],
+  "hints": [
+    "lea rax, [rbp-0x30] tells you exactly where the buffer starts relative to rbp — not rbp-0x20, even though the source only declared a smaller array. Compilers round stack allocations up.",
+    "The stack grows downward, but writing INTO a buffer via strcpy fills upward — toward the saved RBP and the return address above it.",
+    "Offset to the return address = distance from the buffer start to rbp (0x30) + 8 more bytes for the saved RBP slot itself."
+  ],
+  "methodology": "## Investigation Methodology\n\n### 1. Reconstruct Stack Frame\n```\nHigher addresses\n+------------------+ <-- rbp + 0x10 (arg, e.g., [rbp+0x10])\n| ...              |\n+------------------+ <-- rbp + 0x08 | Return address |\n+------------------+ <-- rbp + 0x00 | Saved RBP      |\n+------------------+ <-- rbp - 0x30 | Buffer start   | (0x30 = 48 bytes)\n+------------------+ <-- rbp - 0x40 | (alignment padding if any)\nLower addresses\n```\n\n### 2. Calculate Overflow Offset\n- Buffer starts at `rbp - 0x30` (48 bytes from frame base)\n- `strcpy` writes upward (toward higher addresses)\n- Must cross:\n  1. 48 bytes of buffer\n  2. 8 bytes of saved RBP\n- **Total = 56 bytes** to reach return address\n\n### 3. `leave` Instruction\n```asm\nleave\n; Equivalent to:\nmov rsp, rbp    ; Deallocate locals, RSP = RBP\npop rbp         ; Restore caller's RBP\n```\nThen `ret` pops return address from `[RSP]` (which now points to it).\n\n### 4. Mitigations\n| Mitigation | How It Stops This |\n|------------|-------------------|\n| **Stack Canary (/GS)** | Random cookie between buffer and saved RBP. Checked before `ret`. Overflow overwrites canary → detected. |\n| **DEP/NX** | Stack not executable. Shellcode on stack won't run. |\n| **ASLR** | Stack/base addresses randomized. Hard to guess return address target. |\n| **CFG** | Indirect calls validated. `ret` not directly checked but call targets are. |\n| **SafeSEH** | Exception handlers validated. |\n| **Control Flow Guard** | Valid indirect call targets only. |\n\n### 5. Exploitation Pattern\n1. Overflow buffer → overwrite saved RBP (garbage) → overwrite return address\n2. Return address = address of shellcode / ROP gadget\n3. If canary: leak or brute-force canary first\n4. If DEP: ROP chain (reuse existing code)\n5. If ASLR: info leak to defeat randomization",
+  "commonPitfalls": [
+    "Confusing `sub rsp, 0x30` = 48 bytes (not 30)",
+    "Forgetting the 8-byte saved RBP slot between buffer and return address",
+    "Assuming buffer is exactly at `rbp-0x20` — compiler rounds up (alignment)",
+    "Not accounting for shadow space (32 bytes) in offset calculations",
+    "Missing that `strcpy` stops at NULL byte — exploit must avoid 0x00"
+  ],
+  "tools": [
+    "Ghidra (Stack view, Function graph)",
+    "Binary Ninja (Stack layout)",
+    "x64dbg / GDB (step through, watch stack)",
+    "pwntools / ROPgadget (exploit dev)",
+    "Checksec (mitigation check)",
+    "ROP chain generators"
+  ],
+  "references": [
+    "Lesson E1: Stack Overflows",
+    "Lesson A4: Stack & Functions",
+    "Smashing the Stack for Fun and Profit (Aleph One)",
+    "Windows /GS Implementation",
+    "ROP Emporium (practice)"
+  ],
+  "extensions": [
+    "Calculate offset for a buffer at `rbp-0x28` with `strncpy` (size limit)",
+    "Build a ROP chain to bypass DEP for this binary",
+    "Research: Stack pivoting — moving RSP to controlled buffer",
+    "Practice: Exploit a real binary with canary + ASLR + DEP (ROP Emporium)",
+    "Write a stack overflow detector using binary analysis (pattern search)"
+  ],
+  "solution": "## Stack Smash Analysis — Solution\n\nThe frame layout, from `rbp` downward:\n\n| Offset | Contents |\n|--------|----------|\n| `rbp+0x08` | Return address |\n| `rbp+0x00` | Saved RBP |\n| `rbp-0x30` | Start of `buffer` (48 bytes reserved) |\n\n`strcpy` writes forward from `rbp-0x30` with no bounds check. To reach the return address you must cross:\n\n1. The 48-byte buffer (`0x30` = 48 decimal)\n2. The 8-byte saved RBP slot\n\n**48 + 8 = 56 bytes** — write 56 bytes of junk, and byte 57 onward lands on the return address.\n\n1. **56 bytes**\n2. **Saved RBP** is overwritten first\n3. **RBP** anchors the frame\n\nThis is exactly why stack canaries sit between the buffer and the saved RBP: a canary check catches the overflow before `ret` ever executes."
+}

@@ -1,0 +1,86 @@
+{
+  "id": "lab-07",
+  "title": "Decompiler Output",
+  "module": "static-analysis",
+  "lesson": "sa5",
+  "description": "Match decompiler pseudocode to the underlying assembly and verify the logic.",
+  "difficulty": "Medium",
+  "estimatedTime": 15,
+  "prerequisites": [
+    "sa5-decompilation",
+    "a2-arithmetic-logic",
+    "a3-control-flow",
+    "Ghidra decompiler basics",
+    "C syntax reading"
+  ],
+  "binary": null,
+  "code": {
+    "labels": {},
+    "instructions": [
+      { "address": 0, "op": "mov", "args": ["eax", "5"] },
+      { "address": 1, "op": "add", "args": ["eax", "3"] },
+      { "address": 2, "op": "sub", "args": ["eax", "1"] },
+      { "address": 3, "op": "imul", "args": ["eax", "eax", "4"] },
+      { "address": 4, "op": "cmp", "args": ["eax", "28"] },
+      { "address": 5, "op": "jne", "args": ["fail"] },
+      { "address": 6, "op": "mov", "args": ["ebx", "1"] },
+      { "address": 7, "op": "ret", "args": [] },
+      { "address": 8, "op": "mov", "args": ["ebx", "0"] },
+      { "address": 9, "op": "ret", "args": [] }
+    ]
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "type": "string",
+      "prompt": "What is the value of EAX after the imul instruction? (decimal)",
+      "answer": "28"
+    },
+    {
+      "id": "q2",
+      "type": "string",
+      "prompt": "Which branch is taken — success (ebx=1) or failure (ebx=0)?",
+      "answer": "success"
+    },
+    {
+      "id": "q3",
+      "type": "string",
+      "prompt": "The decompiler would show this as an if statement. What comparison does it represent? (e.g. x == 28)",
+      "answer": "eax == 28"
+    }
+  ],
+  "hints": [
+    "((5 + 3) - 1) * 4 = ?",
+    "JNE jumps when ZF = 0, i.e. when the comparison is NOT equal.",
+    "Trace: 5 + 3 = 8, 8 - 1 = 7, 7 * 4 = 28."
+  ],
+  "methodology": "## Investigation Methodology\n\n### 1. Read Assembly Line by Line\nTrace register values:\n- `mov eax, 5` → EAX = 5\n- `add eax, 3` → EAX = 8\n- `sub eax, 1` → EAX = 7\n- `imul eax, eax, 4` → EAX = 7 * 4 = 28\n- `cmp eax, 28` → 28 - 28 = 0 → ZF = 1\n- `jne fail` → ZF=1 → **NOT taken**\n- Fall through: `mov ebx, 1` → EBX = 1\n- `ret` → return 1 (success)\n\n### 2. Map to High-Level Logic\nThe decompiler shows:\n```c\nint check() {\n    int x = ((5 + 3) - 1) * 4;\n    if (x == 28) return 1;\n    return 0;\n}\n```\n\n### 3. Verify Decompiler Accuracy\n- Check: Does decompiler match assembly control flow?\n- Check: Are constants correct? (28 = literal)\n- Check: Are variable names meaningful? (x, result)\n- Check: Is branch direction correct? (jne = jump if NOT equal)\n\n### 4. Common Decompiler Artifacts\n- **Goto statements**: Irreducible control flow\n- **Stack variables**: `local_8`, `local_10` → rename based on use\n- **Type inference**: May guess wrong (int vs pointer, signed vs unsigned)\n- **Inlined functions**: May appear as straight-line code\n- **Optimized patterns**: `lea` for multiply, `xor` for zero, etc.\n\n### 5. Cross-Reference Assembly ↔ Pseudocode\n- Click variable in decompiler → highlights in assembly\n- Click instruction in assembly → highlights in decompiler\n- Use this bidirectional navigation to verify",
+  "commonPitfalls": [
+    "Trusting decompiler output blindly — always verify critical logic in assembly",
+    "Missing that `jne` jumps when NOT equal (ZF=0), not when equal",
+    "Misreading `imul eax, eax, 4` as `eax *= 4` vs `eax = eax * 4` (same here, but 3-operand form allows different destination)",
+    "Overlooking that decompiler may simplify constants (e.g., show `28` directly)",
+    "Confusing signed vs unsigned comparisons (`jl` vs `jb`, `jg` vs `ja`)"
+  ],
+  "tools": [
+    "Ghidra Decompiler (F5)",
+    "Binary Ninja Decompiler (IL/MLIL/HLIL)",
+    "IDA Pro Hex-Rays Decompiler",
+    "retdec (open-source)",
+    "snowman (open-source)"
+  ],
+  "references": [
+    "Lesson SA5: Decompilation",
+    "Lesson A2: Arithmetic & Logic",
+    "Lesson A3: Control Flow",
+    "Ghidra Decompiler User Guide",
+    "Hex-Rays Decompiler Documentation"
+  ],
+  "extensions": [
+    "Decompile a real function from a malware sample, trace one variable through",
+    "Find a case where Ghidra decompiler is wrong (type, control flow, variable merge)",
+    "Write a Ghidra script to auto-rename variables based on API arguments",
+    "Compare decompiler output across Ghidra, Binary Ninja, IDA for same function"
+  ],
+  "solution": "## Decompiler Output — Solution\n\nThe assembly computes `((5 + 3) - 1) * 4 = 28`:\n\n1. EAX after `imul` = **28**.\n2. `cmp eax, 28` → equal → ZF=1 → `jne fail` is **not taken**, so execution falls through to `mov ebx, 1` — the **success** branch.\n3. The decompiler would render this as `if (eax == 28) { result = 1; } else { result = 0; }`.\n\n**Key lesson**: the decompiler recovered the branch correctly, but the *meaning* (why 28?) still requires you to read the constants and reason about intent. Pseudocode orients you; the assembly confirms."
+}

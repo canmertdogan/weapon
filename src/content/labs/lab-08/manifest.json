@@ -1,0 +1,81 @@
+{
+  "id": "lab-08",
+  "title": "Where to Break",
+  "module": "debugging",
+  "lesson": "d1",
+  "description": "Choose strategic breakpoint locations to answer a question about a validation routine.",
+  "difficulty": "Easy",
+  "estimatedTime": 10,
+  "prerequisites": [
+    "d1-breakpoints",
+    "a3-control-flow",
+    "x64dbg/GDB basics",
+    "Conditional jump behavior"
+  ],
+  "binary": null,
+  "code": {
+    "labels": { "reject": 6, "end": 7 },
+    "instructions": [
+      { "address": 0, "op": "mov", "args": ["rax", "5"] },
+      { "address": 1, "op": "mov", "args": ["rcx", "5"] },
+      { "address": 2, "op": "cmp", "args": ["rax", "rcx"] },
+      { "address": 3, "op": "jne", "args": ["reject"] },
+      { "address": 4, "op": "mov", "args": ["rdx", "1"] },
+      { "address": 5, "op": "jmp", "args": ["end"] },
+      { "address": 6, "op": "mov", "args": ["rdx", "0"] },
+      { "address": 7, "op": "ret", "args": [] }
+    ]
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "type": "string",
+      "prompt": "To see the outcome of the comparison, where should you set a breakpoint? (address, e.g. 0x4)",
+      "answer": "0x4"
+    },
+    {
+      "id": "q2",
+      "type": "string",
+      "prompt": "What value will RDX hold when execution reaches the 'ret' at 0x7? (decimal)",
+      "answer": "1"
+    },
+    {
+      "id": "q3",
+      "type": "string",
+      "prompt": "Which conditional jump instruction decides between success and rejection?",
+      "answer": "jne"
+    }
+  ],
+  "hints": [
+    "Break after the cmp/jne decision, before the branches merge.",
+    "RAX and RCX are both 5, so the comparison is equal.",
+    "A breakpoint at 0x4 catches execution only on the success path."
+  ],
+  "methodology": "## Investigation Methodology\n\n### 1. Understand the Control Flow\n```\n    cmp rax, rcx\n    jne reject    ← Decision point\n    mov rdx, 1    ← Success path (address 4)\n    jmp end\nreject:\n    mov rdx, 0    ← Failure path (address 6)\nend:\n    ret\n```\n\n### 2. Strategic Breakpoint Placement\n- **On the branch (address 3)**: Shows you the test, not the outcome\n- **After the branch (address 4)**: Shows you the success path was taken\n- **At merge point (address 7)**: Shows final result, but not which path\n\n**Rule**: Break *after* the branch you want to observe.\n\n### 3. Trace Execution\n- `mov rax, 5` / `mov rcx, 5` → Both = 5\n- `cmp rax, rcx` → 5 - 5 = 0 → ZF = 1\n- `jne reject` → ZF=1 → **NOT taken** (equal)\n- Falls through to `mov rdx, 1`\n- `jmp end` → skip failure path\n- `ret` with RDX = 1\n\n### 4. Conditional Breakpoints\nIn x64dbg/GDB:\n- `bp 0x401003` (on `jne`)\n- Or conditional: break at address 3 *if* ZF=0 (failure path)\n- Log breakpoints: auto-continue, log registers",
+  "commonPitfalls": [
+    "Breaking on the `jne` itself — you see the test, not which way it went",
+    "Not accounting for instruction sizes when calculating addresses",
+    "Missing that `cmp` sets flags but doesn't store result",
+    "Confusing `jne` (jump if NOT equal) with `je` (jump if equal)"
+  ],
+  "tools": [
+    "x64dbg / x32dbg (Windows)",
+    "GDB / GEF / pwndbg (Linux)",
+    "WinDbg (kernel/user)",
+    "Binary Ninja Debugger",
+    "Ghidra Debugger (experimental)"
+  ],
+  "references": [
+    "Lesson D1: Breakpoints",
+    "Lesson A3: Control Flow — JNE, JE",
+    "x64dbg Breakpoint Guide",
+    "GDB Breakpoint Commands"
+  ],
+  "extensions": [
+    "Set a conditional breakpoint that only triggers when RAX ≠ RCX",
+    "Use a log breakpoint to trace 100 iterations of a loop",
+    "Research: Hardware breakpoints (DR0-DR3) vs software (INT3)",
+    "Practice: Break on memory access (write to specific address)"
+  ],
+  "solution": "## Where to Break — Solution\n\n1. **Breakpoint at 0x4** (after the `jne` at 0x3, on the success path). This pauses exactly when the comparison passed.\n2. RAX = RCX = 5, so `cmp` is equal → `jne` not taken → falls through to `mov rdx, 1` → **RDX = 1** at `ret`.\n3. The **`jne`** instruction at 0x3 is the decision point.\n\n**Methodology**: break *after* the branch you care about, not on the branch itself, so you observe the consequence rather than the test."
+}

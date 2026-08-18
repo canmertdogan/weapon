@@ -1,0 +1,90 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Header from '../../../components/layout/Header.astro';
+import Footer from '../../../components/layout/Footer.astro';
+import { getModuleTree } from '../../../utils/course';
+import { BASE } from '../../../utils/base';
+
+export async function getStaticPaths() {
+  const tree = await getModuleTree();
+  return tree.map((module) => ({ params: { module: module.id }, props: { module, tree } }));
+}
+
+const { module, tree } = Astro.props;
+const index = tree.findIndex((m) => m.id === module.id);
+const prevModule = index > 0 ? tree[index - 1] : null;
+const nextModule = index < tree.length - 1 ? tree[index + 1] : null;
+
+const lessonIds = module.lessons.map((l) => l.id).join(',');
+const lessonHrefs = module.lessons.map((l) => l.href).join(',');
+const firstHref = module.lessons[0]?.href || '';
+---
+
+<Base title={`${module.label} — WEAPON`}>
+  <Header slot="header" />
+
+  <div class="max-w-3xl mx-auto">
+    <header class="py-10">
+      <h1 class="text-3xl md:text-4xl mb-3">{module.label}</h1>
+      <p class="text-fg-muted max-w-2xl">{module.summary}</p>
+
+      <div class="mt-6 flex items-center gap-4 max-w-md">
+        <div
+          class="flex-1 h-2 bg-border rounded-full overflow-hidden"
+          data-module-progress
+          data-lessons={lessonIds}
+        >
+          <div class="progress-fill h-full bg-accent transition-all duration-500" style="width: 0%"></div>
+        </div>
+        <span class="progress-label text-sm text-fg-muted font-mono">0%</span>
+      </div>
+
+      <div class="mt-6">
+        <a
+          href={firstHref}
+          data-module-cta
+          data-lessons={lessonIds}
+          data-lessons-href={lessonHrefs}
+          class="btn btn-primary"
+        >
+          Start
+        </a>
+      </div>
+    </header>
+
+    <section class="pb-8">
+      <h2 class="text-lg mb-6">Lessons</h2>
+      <div class="roadmap">
+        {module.lessons.map((lesson) => (
+          <div class="roadmap-node">
+            <div class="roadmap-marker">{String(lesson.order).padStart(2, '0')}</div>
+            <a
+              href={lesson.href}
+              data-lesson-id={lesson.id}
+              class="roadmap-content card card-hover flex items-center gap-3 no-underline"
+            >
+              <span class="flex-1 text-fg">{lesson.title}</span>
+              <span class="completion-mark hidden text-accent flex-shrink-0" aria-hidden="true">✓</span>
+              <span class="font-mono text-xs text-fg-muted/50">{lesson.duration}m</span>
+            </a>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <nav class="flex items-center justify-between gap-4 pt-6 border-t border-border pb-12" aria-label="Module navigation">
+      <div class="flex-1">
+        {prevModule && (
+          <a href={`${BASE}course/${prevModule.id}`} class="btn btn-secondary text-sm">← {prevModule.label}</a>
+        )}
+      </div>
+      <div class="flex-1 text-right">
+        {nextModule && (
+          <a href={`${BASE}course/${nextModule.id}`} class="btn btn-primary text-sm">{nextModule.label} →</a>
+        )}
+      </div>
+    </nav>
+  </div>
+
+  <Footer slot="footer" />
+</Base>

@@ -1,0 +1,80 @@
+{
+  "id": "lab-06",
+  "title": "Cross-Reference Tracing",
+  "module": "static-analysis",
+  "lesson": "sa4",
+  "description": "Trace cross references to determine which function references an interesting string and how it is reached.",
+  "difficulty": "Medium",
+  "estimatedTime": 15,
+  "prerequisites": [
+    "sa4-cross-references",
+    "a4-stack-functions",
+    "Win64 calling convention (RCX, RDX, R8, R9)",
+    "Ghidra/Binary Ninja xref navigation"
+  ],
+  "binary": null,
+  "code": {
+    "labels": {},
+    "instructions": [
+      { "address": 0, "op": "mov", "args": ["rcx", "0x402000"] },
+      { "address": 1, "op": "call", "args": ["sub_401100"] },
+      { "address": 2, "op": "mov", "args": ["eax", "0"] },
+      { "address": 3, "op": "ret", "args": [] },
+      { "address": 4, "op": "mov", "args": ["rdx", "0x402000"] },
+      { "address": 5, "op": "call", "args": ["sub_401200"] },
+      { "address": 6, "op": "ret", "args": [] }
+    ]
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "type": "string",
+      "prompt": "Which function references the string at 0x402000? (e.g. sub_401200)",
+      "answer": "sub_401200"
+    },
+    {
+      "id": "q2",
+      "type": "string",
+      "prompt": "Which register holds the string pointer when it is passed to the function?",
+      "answer": "rdx"
+    },
+    {
+      "id": "q3",
+      "type": "string",
+      "prompt": "Under the Win64 convention, which argument position is that register? (1st, 2nd, 3rd, 4th)",
+      "answer": "2nd"
+    }
+  ],
+  "hints": [
+    "An XREF to the string is the instruction that loads its address into a register.",
+    "Win64 order is RCX, RDX, R8, R9.",
+    "The first block (addresses 0-3) references 0x402000 too — but does it call a different function?"
+  ],
+  "methodology": "## Investigation Methodology\n\n### 1. Find All Cross-References (Xrefs)\n- In Ghidra: Right-click string → References → Show References to Address\n- In Binary Ninja: Right-click → Cross References\n- List every instruction that references the target address\n\n### 2. Classify Each Xref\nFor each xref, determine:\n- **Type**: Code (instruction) vs Data (pointer in table)\n- **Context**: Which function contains the instruction?\n- **Role**: Argument (which position?), local variable, comparison, jump target\n\n### 3. Analyze Argument Position (Win64)\n| Register | Position | Volatile? |\n|----------|----------|-----------|\n| RCX | 1st | Yes |\n| RDX | 2nd | Yes |\n| R8 | 3rd | Yes |\n| R9 | 4th | Yes |\n| Stack (RSP+0x28+) | 5th+ | Yes |\n\n### 4. Trace Data Flow\n- String address loaded into register\n- Register passed to function call\n- Function uses it (e.g., passes to API, compares, copies)\n\n### 5. Distinguish Direct vs Indirect Use\n- **Direct**: Function processes the string (prints, compares, sends)\n- **Indirect**: Function passes it along to another function\n- **Setup**: Function just stores pointer for later use\n\n### 6. Document Findings\n- String address\n- All xref locations (address, function, instruction)\n- Argument position at each call\n- Inferred purpose per function",
+  "commonPitfalls": [
+    "Missing xrefs because string is built dynamically (stack string, encoded)",
+    "Confusing the caller (which loads address) with the callee (which uses it)",
+    "Assuming RCX/first arg is always the 'important' one — context matters",
+    "Not checking for multiple xrefs to the same string from different functions"
+  ],
+  "tools": [
+    "Ghidra (References window, Cross References)",
+    "Binary Ninja (Cross References, Data Flow)",
+    "IDA Pro (Xrefs, Graph view)",
+    "radare2 (axf, axg)",
+    "objdump / Ghidra script for automation"
+  ],
+  "references": [
+    "Lesson SA4: Cross-References",
+    "Lesson A4: Stack & Functions — Win64 calling convention",
+    "Microsoft x64 Calling Convention docs",
+    "Ghidra Xref Analysis Guide"
+  ],
+  "extensions": [
+    "Find all strings in a binary, trace xrefs for each, categorize by capability",
+    "Write a Ghidra script to auto-generate xref report for all strings",
+    "Research: How to trace xrefs through pointer arithmetic / computed addresses",
+    "Analyze a sample with indirect string references (pointer tables)"
+  ],
+  "solution": "## Cross-Reference Tracing — Solution\n\nThe string at `0x402000` is referenced in two places:\n\n- Address 0: `mov rcx, 0x402000` → passed as **1st arg** to `sub_401100`.\n- Address 4: `mov rdx, 0x402000` → passed as **2nd arg** to `sub_401200`.\n\n1. The function that takes the string as its **2nd argument** is `sub_401200` (address 4-5).\n2. The pointer is in **RDX**.\n3. RDX is the **2nd** argument position under Win64 (RCX=1st, RDX=2nd, R8=3rd, R9=4th).\n\n**Methodology**: list all XREFs to the string, then read each call site to determine *how* it's used — as what argument, in what context. That tells you which function actually consumes it."
+}

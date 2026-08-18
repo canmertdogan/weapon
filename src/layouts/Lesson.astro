@@ -1,0 +1,225 @@
+---
+import Base from './Base.astro';
+import Header from '../components/layout/Header.astro';
+import Footer from '../components/layout/Footer.astro';
+import Sidebar from '../components/layout/Sidebar.astro';
+import HexViewerIsland from '../components/interactive/islands/HexViewerIsland.astro';
+import AssemblyVisualizerIsland from '../components/interactive/islands/AssemblyVisualizerIsland.astro';
+import StackVisualizerIsland from '../components/interactive/islands/StackVisualizerIsland.astro';
+import InstructionPlaygroundIsland from '../components/interactive/islands/InstructionPlaygroundIsland.astro';
+import ControlFlowVisualizerIsland from '../components/interactive/islands/ControlFlowVisualizerIsland.astro';
+import DebuggerSimulatorIsland from '../components/interactive/islands/DebuggerSimulatorIsland.astro';
+import { getModuleTree, getAdjacentLessons, type LessonNode } from '../utils/course';
+import { getInteractiveProps } from '../utils/interactive';
+import { BASE } from '../utils/base';
+
+interface Props {
+  module: string;
+  lesson: LessonNode;
+  Content: any;
+}
+
+const { module, lesson, Content } = Astro.props;
+const tree = await getModuleTree();
+const { prev, next } = await getAdjacentLessons(module, lesson.id);
+const interactive = getInteractiveProps(lesson.id, lesson.interactive);
+---
+
+<Base title={lesson.title}>
+  <Header slot="header" />
+  <div class="flex">
+    <div class="lg:w-72 lg:flex-shrink-0 lg:border-r lg:border-border lg:bg-bg-elevated/30">
+      <Sidebar modules={tree} currentModule={module} currentLesson={lesson.id} />
+    </div>
+    <article class="flex-1 min-w-0 max-w-3xl mx-auto px-4 py-8">
+      <header class="mb-8">
+        <a href={`${BASE}course/${module}`} class="font-mono text-sm text-fg-muted hover:text-accent-bright transition-colors mb-2 inline-block">
+          {module.toUpperCase()} · LESSON {String(lesson.order).padStart(2, '0')}
+        </a>
+        <h1 class="mb-4 text-balance">{lesson.title}</h1>
+        <div class="flex flex-wrap gap-2 mb-6">
+          <span class="badge badge-current">{lesson.duration} min</span>
+        </div>
+        <div class="card">
+          <h4 class="text-sm uppercase tracking-wider text-fg-muted mb-2">Learning Objectives</h4>
+          <ul class="list-none space-y-1">
+            {lesson.objectives.map((o) => (
+              <li class="flex items-start gap-2 text-sm text-fg">
+                <svg class="mt-1 flex-shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>{o}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </header>
+
+      <div class="prose-content">
+        <Content />
+      </div>
+
+      {interactive && (
+        <section class="my-10">
+          <h2 class="text-lg mb-4">Interactive</h2>
+          <div class="interactive-slot">
+            {interactive.component === 'HexViewerIsland' && (
+              <HexViewerIsland {...interactive.props} />
+            )}
+            {interactive.component === 'AssemblyVisualizerIsland' && (
+              <AssemblyVisualizerIsland {...interactive.props} />
+            )}
+            {interactive.component === 'StackVisualizerIsland' && (
+              <StackVisualizerIsland {...interactive.props} />
+            )}
+            {interactive.component === 'InstructionPlaygroundIsland' && (
+              <InstructionPlaygroundIsland {...interactive.props} />
+            )}
+            {interactive.component === 'ControlFlowVisualizerIsland' && (
+              <ControlFlowVisualizerIsland {...interactive.props} />
+            )}
+            {interactive.component === 'DebuggerSimulatorIsland' && (
+              <DebuggerSimulatorIsland {...interactive.props} />
+            )}
+          </div>
+        </section>
+      )}
+
+      {lesson.lab && (
+        <section class="my-10">
+          <div class="card card-hover">
+            <div class="flex items-center justify-between gap-4">
+              <div>
+                <p class="font-mono text-xs text-accent mb-1">LAB</p>
+                <h3 class="text-lg">{lesson.lab}</h3>
+                <p class="text-sm text-fg-muted">Apply what you learned in a hands-on challenge.</p>
+              </div>
+              <a href={`${BASE}labs/${lesson.lab}`} class="btn btn-primary flex-shrink-0">Open Lab</a>
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section class="my-10" aria-labelledby="notes-heading">
+        <div id="lesson-notes-container"></div>
+      </section>
+
+      <nav class="flex items-center justify-between gap-4 mt-12 pt-6 border-t border-border" aria-label="Lesson navigation">
+        <div class="flex-1">
+          {prev && (
+            <a href={prev.href} class="btn btn-secondary text-sm">
+              ← {prev.title}
+            </a>
+          )}
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="mark-complete" class="btn btn-secondary text-sm" data-lesson={lesson.id}>
+            Mark Complete
+          </button>
+          <button id="print-lesson" class="btn btn-ghost text-sm" aria-label="Print or save as PDF" title="Print lesson (Ctrl+P)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;">
+              <polyline points="6 9 6 2 18 2 18 9"></polyline>
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+              <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+            Print
+          </button>
+        </div>
+        <div class="flex-1 text-right">
+          {next && (
+            <a href={next.href} class="btn btn-primary text-sm">
+              {next.title} →
+            </a>
+          )}
+        </div>
+      </nav>
+    </article>
+  </div>
+  <Footer slot="footer" />
+</Base>
+
+<script>
+  import { loadProgress, markLessonComplete, setCurrentLesson } from '../scripts/progress';
+  import { LessonNotes } from '../components/LessonNotes';
+
+  const btn = document.getElementById('mark-complete') as HTMLButtonElement;
+  const lessonId = btn?.dataset.lesson;
+  if (btn && lessonId) {
+    setCurrentLesson(lessonId);
+    const progress = loadProgress();
+    if (progress.completedLessons.includes(lessonId)) {
+      btn.textContent = '✓ Completed';
+      btn.classList.add('btn-primary');
+      btn.classList.remove('btn-secondary');
+    }
+    btn.addEventListener('click', () => {
+      markLessonComplete(lessonId);
+      btn.textContent = '✓ Completed';
+      btn.classList.add('btn-primary');
+      btn.classList.remove('btn-secondary');
+    });
+  }
+
+  // Print/PDF export
+  const printBtn = document.getElementById('print-lesson');
+  printBtn?.addEventListener('click', () => {
+    window.print();
+  });
+
+  // Keyboard shortcut for print
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+      // Check if focus is not in an input
+      const active = document.activeElement;
+      if (active && (active as HTMLElement).tagName !== 'INPUT' && (active as HTMLElement).tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        window.print();
+      }
+    }
+  });
+
+  // Initialize lesson notes
+  const notesContainer = document.getElementById('lesson-notes-container');
+  const notesLessonId = btn?.dataset.lesson;
+  if (notesContainer && notesLessonId) {
+    new LessonNotes(notesContainer, notesLessonId);
+  }
+</script>
+
+<style>
+  .prose-content :global(h2) { margin: 2rem 0 1rem; }
+  .prose-content :global(h3) { margin: 1.5rem 0 0.75rem; }
+  .prose-content :global(p) { margin: 0.75rem 0; line-height: 1.7; }
+  .prose-content :global(ul), .prose-content :global(ol) { margin: 0.75rem 0; padding-left: 1.5rem; }
+  .prose-content :global(li) { margin: 0.25rem 0; }
+  .prose-content :global(code) {
+    background: var(--color-bg-elevated);
+    padding: 0.125rem 0.375rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.875em;
+  }
+  .prose-content :global(pre) {
+    background: var(--color-bg);
+    border-left: 3px solid var(--color-accent);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    padding: var(--spacing-4);
+    overflow-x: auto;
+    font-size: 0.8125rem;
+    line-height: 1.7;
+    margin: 1rem 0;
+  }
+  .prose-content :global(pre code) { background: transparent; padding: 0; }
+  .prose-content :global(table) { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.875rem; }
+  .prose-content :global(th), .prose-content :global(td) { border: 1px solid var(--color-border); padding: 0.5rem 0.75rem; text-align: left; }
+  .prose-content :global(th) { background: var(--color-bg-elevated); }
+  .prose-content :global(blockquote) {
+    border-left: 3px solid var(--color-accent);
+    margin: 1rem 0;
+    padding: 0.5rem 1rem;
+    color: var(--color-fg-muted);
+    background: var(--color-bg-elevated);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  }
+  .prose-content :global(hr) { border: none; border-top: 1px solid var(--color-border); margin: 2rem 0; }
+  .interactive-slot { background: transparent; }
+</style>

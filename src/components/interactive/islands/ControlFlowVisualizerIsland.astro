@@ -1,0 +1,13 @@
+---
+interface Props {
+  nodes: { id: string; label: string; code?: string[]; x?: number; y?: number }[];
+  edges: { from: string; to: string; label?: string; type: 'taken' | 'fallthrough' | 'unconditional' }[];
+  title?: string;
+  startNodeId: string;
+  id?: string;
+}
+const { nodes, edges, title = 'Control Flow', startNodeId } = Astro.props;
+const payload = JSON.stringify({ nodes, edges, title, startNodeId });
+---
+
+<div data-weapon-component="control-flow" data-weapon-props={payload}></div>

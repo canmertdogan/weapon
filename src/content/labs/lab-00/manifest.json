@@ -1,0 +1,69 @@
+{
+  "id": "lab-00",
+  "title": "Toolchain Verification",
+  "module": "start",
+  "lesson": "s3",
+  "description": "Verify your reverse engineering toolchain is correctly installed and configured before starting the course.",
+  "difficulty": "Trivial",
+  "estimatedTime": 5,
+  "prerequisites": [
+    "s3-arsenal",
+    "Basic command-line usage",
+    "Windows/Linux/macOS environment"
+  ],
+  "binary": null,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "string",
+      "prompt": "Which free NSA-developed tool is the primary static analysis disassembler/decompiler recommended in this course?",
+      "answer": "ghidra"
+    },
+    {
+      "id": "q2",
+      "type": "string",
+      "prompt": "What is the Windows debugger recommended for dynamic analysis (its executable name)?",
+      "answer": "x64dbg"
+    },
+    {
+      "id": "q3",
+      "type": "string",
+      "prompt": "The first two bytes of a Windows PE file (the magic number) are which two ASCII characters?",
+      "answer": "mz"
+    }
+  ],
+  "hints": [
+    "Check the 'Setting Up Your Arsenal' lesson for the tool list.",
+    "The debugger comes in x32 and x64 variants.",
+    "The magic number is found at the very start of every Windows executable."
+  ],
+  "methodology": "## Verification Checklist\n\n### 1. Static Analysis Tooling\n- **Ghidra**: NSA's free RE framework. Requires JDK 17+. Verify: launch `ghidraRun`.\n- **Binary Ninja / IDA Pro** (optional): Commercial alternatives.\n\n### 2. Dynamic Analysis Tooling\n- **x64dbg** (Windows): 64-bit debugging, x32dbg for 32-bit.\n- **GDB / GEF / pwndbg** (Linux): The GNU debugger with plugins.\n- **WinDbg** (optional): Microsoft's kernel/user debugger.\n\n### 3. PE/ELF Inspection\n- **PE-bear / CFF Explorer** (Windows): PE header viewers.\n- **readelf / objdump** (Linux): ELF inspection.\n\n### 4. Utility Tooling\n- **strings**: ASCII/Unicode extraction (built into most systems).\n- **file**: File type identification.\n- **Hex editor** (HxD, ImHex, 010 Editor).\n\n### 5. Confirm Readiness\n- All tools launch without error\n- Paths/environment variables configured\n- Sample binaries can be opened and inspected",
+  "commonPitfalls": [
+    "Ghidra fails to launch without JDK 17+ installed",
+    "Confusing x64dbg (64-bit) with x32dbg (32-bit)",
+    "Assuming `strings` extracts Unicode by default (needs -el flag)",
+    "Forgetting to add tools to PATH for command-line use"
+  ],
+  "tools": [
+    "Ghidra (disassembler/decompiler)",
+    "x64dbg / x32dbg (Windows debugger)",
+    "GDB / GEF / pwndbg (Linux debugger)",
+    "PE-bear / CFF Explorer (PE viewer)",
+    "readelf / objdump (ELF tools)",
+    "strings / file (utilities)",
+    "Hex editor (HxD / ImHex / 010 Editor)"
+  ],
+  "references": [
+    "Lesson S3: Arsenal",
+    "Ghidra Installation Guide",
+    "x64dbg Documentation",
+    "GDB Quick Reference"
+  ],
+  "extensions": [
+    "Install and configure GEF or pwndbg for GDB",
+    "Set up a Windows VM with x64dbg for dynamic analysis",
+    "Install FLOSS and DIE (Detect It Easy) for later modules",
+    "Create a tool aliases/script to launch your RE environment"
+  ],
+  "solution": "## Toolchain Verification — Solution\n\n1. **Ghidra** — NSA's free reverse engineering framework (disassembler + decompiler). Requires JDK 17+.\n2. **x64dbg** — Open-source Windows debugger for 64-bit binaries (x32dbg for 32-bit).\n3. **MZ** — The DOS header magic bytes (`4D 5A` in hex) that mark a valid PE file. Named after Mark Zbikowski.\n\nAll three answers confirm you've absorbed the arsenal lesson. Your environment is ready."
+}

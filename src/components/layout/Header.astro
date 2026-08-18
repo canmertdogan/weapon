@@ -1,0 +1,96 @@
+---
+import { BASE } from '../../utils/base';
+
+const path = Astro.url.pathname;
+const isActive = (segment: string) => path.includes(`${BASE}${segment}`);
+
+const links = [
+  { href: `${BASE}course`, label: 'Course', match: 'course' },
+  { href: `${BASE}labs`, label: 'Labs', match: 'labs' },
+  { href: `${BASE}about`, label: 'About', match: 'about' },
+];
+---
+
+<header class="border-b border-border-strong bg-bg-elevated/85 backdrop-blur-sm sticky top-0 z-40">
+  <div class="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <button
+        id="mobile-menu-btn"
+        class="btn btn-ghost md:hidden"
+        aria-label="Toggle navigation"
+        aria-expanded="false"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <a href={BASE} class="font-display font-bold text-xl tracking-[0.15em] text-accent text-glow select-none">
+        WEAPON
+      </a>
+      <nav class="hidden md:flex items-center gap-1 ml-2" aria-label="Primary">
+        {links.map((link) => (
+          <a href={link.href} class:list={['nav-pill', isActive(link.match) && 'is-active']} aria-current={isActive(link.match) ? 'page' : undefined}>
+            {link.label}
+          </a>
+        ))}
+      </nav>
+    </div>
+
+    <div class="flex items-center gap-3 relative">
+      <div class="progress-ring progress-ring--sm" data-overall-progress title="Overall course progress">
+        <svg viewBox="0 0 100 100">
+          <circle class="progress-ring-track" cx="50" cy="50" r="42"></circle>
+          <circle class="progress-ring-fill" cx="50" cy="50" r="42"></circle>
+        </svg>
+        <span class="progress-ring-label">0%</span>
+      </div>
+      <div class="rank-badge text-sm hidden sm:block" id="rank-badge">RECRUIT</div>
+
+      <div id="mobile-nav" class="nav-dropdown md:hidden" hidden>
+        {links.map((link) => (
+          <a href={link.href} class:list={['nav-pill', isActive(link.match) && 'is-active']}>
+            {link.label}
+          </a>
+        ))}
+      </div>
+    </div>
+  </div>
+</header>
+
+<script>
+  const btn = document.getElementById('mobile-menu-btn');
+  const mobileNav = document.getElementById('mobile-nav');
+
+  function closeMobileNav() {
+    if (mobileNav) mobileNav.hidden = true;
+    btn?.setAttribute('aria-expanded', 'false');
+  }
+
+  btn?.addEventListener('click', () => {
+    const hasSidebar = document.getElementById('sidebar');
+    const toggleSidebar = (window as any).toggleSidebar;
+    if (hasSidebar && typeof toggleSidebar === 'function') {
+      toggleSidebar();
+      return;
+    }
+    if (mobileNav) {
+      const willOpen = mobileNav.hidden;
+      mobileNav.hidden = !willOpen;
+      btn?.setAttribute('aria-expanded', String(willOpen));
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!mobileNav || mobileNav.hidden) return;
+    const target = e.target as Node;
+    if (!mobileNav.contains(target) && !btn?.contains(target)) {
+      closeMobileNav();
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeMobileNav();
+  });
+</script>

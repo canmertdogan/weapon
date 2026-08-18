@@ -1,0 +1,86 @@
+{
+  "id": "lab-03",
+  "title": "Control Flow Tracing",
+  "module": "assembly",
+  "lesson": "a2",
+  "description": "Trace a short assembly routine step-by-step and determine the final register state and taken branch.",
+  "difficulty": "Medium",
+  "estimatedTime": 15,
+  "prerequisites": [
+    "a1-registers-movement",
+    "a2-arithmetic-logic",
+    "a3-control-flow",
+    "x64 register conventions (RAX, RCX, RDX)",
+    "Flags register (ZF, CF, SF, OF)"
+  ],
+  "binary": null,
+  "code": {
+    "labels": {
+      "start": 0,
+      "loop": 3,
+      "done": 7
+    },
+    "instructions": [
+      { "address": 0, "op": "mov", "args": ["rax", "0"] },
+      { "address": 1, "op": "mov", "args": ["rcx", "5"] },
+      { "address": 2, "op": "mov", "args": ["rdx", "0"] },
+      { "address": 3, "op": "add", "args": ["rax", "rcx"] },
+      { "address": 4, "op": "sub", "args": ["rcx", "1"] },
+      { "address": 5, "op": "cmp", "args": ["rcx", "0"] },
+      { "address": 6, "op": "jne", "args": ["loop"] },
+      { "address": 7, "op": "mov", "args": ["rdx", "rax"] },
+      { "address": 8, "op": "ret", "args": [] }
+    ]
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "type": "string",
+      "prompt": "After execution completes, what is the final value in RAX? (decimal)",
+      "answer": "15"
+    },
+    {
+      "id": "q2",
+      "type": "string",
+      "prompt": "How many times does the loop body execute (the ADD at the loop label)? (decimal)",
+      "answer": "5"
+    },
+    {
+      "id": "q3",
+      "type": "string",
+      "prompt": "Which flag does the JNE instruction depend on to decide whether to loop again?",
+      "answer": "zf"
+    }
+  ],
+  "hints": [
+    "RAX accumulates a running sum.",
+    "RCX starts at 5 and is decremented each iteration.",
+    "JNE jumps while the result is not equal to zero (ZF = 0)."
+  ],
+  "methodology": "## Investigation Methodology\n\n### 1. Understand the Routine Structure\n- Identify entry point (`start` label)\n- Find loop structure: label, body, condition, jump\n- Identify exit point (`ret`)\n\n### 2. Register Initialization\n- `mov rax, 0` — accumulator initialized to 0\n- `mov rcx, 5` — loop counter initialized to 5\n- `mov rdx, 0` — cleared (unused in loop, used at end)\n\n### 3. Loop Analysis\n**Loop label at address 3**:\n- `add rax, rcx` — add counter to accumulator\n- `sub rcx, 1` — decrement counter\n- `cmp rcx, 0` — compare counter to zero, sets flags\n- `jne loop` — jump if not equal (ZF=0)\n\n### 4. Flag Behavior\n- `cmp` performs subtraction (RCX - 0) and sets flags, **does not store result**\n- `ZF = 1` when result is zero (RCX == 0)\n- `ZF = 0` when result non-zero (RCX != 0)\n- `jne` = Jump if Not Equal = Jump if ZF = 0\n\n### 5. Iteration Trace\n| Iteration | RAX (before) | RCX (before) | ADD result | RCX (after SUB) | CMP result | JNE taken? |\n|-----------|--------------|--------------|------------|-----------------|------------|------------|\n| 1         | 0            | 5            | 5          | 4               | ≠0 (ZF=0)  | Yes        |\n| 2         | 5            | 4            | 9          | 3               | ≠0 (ZF=0)  | Yes        |\n| 3         | 9            | 3            | 12         | 2               | ≠0 (ZF=0)  | Yes        |\n| 4         | 12           | 2            | 14         | 1               | ≠0 (ZF=0)  | Yes        |\n| 5         | 14           | 1            | 15         | 0               | =0 (ZF=1)  | **No**     |\n\n### 6. Post-Loop\n- Loop exits when RCX = 0, ZF = 1\n- `mov rdx, rax` — copy final sum (15) to RDX\n- `ret` — return with RAX = 15, RDX = 15",
+  "commonPitfalls": [
+    "Thinking the loop runs 6 times (0 through 5) — it runs 5 times (5 down to 1)",
+    "Confusing `jne` (jump if ZF=0) with `je` (jump if ZF=1)",
+    "Forgetting `cmp` doesn't modify registers, only flags",
+    "Missing that the final iteration adds 1 (when RCX=1), not 0"
+  ],
+  "tools": [
+    "Assembly Visualizer (built-in)",
+    "Ghidra decompiler (to verify logic)",
+    "x64dbg / GDB (step through manually)",
+    "Pen and paper (register trace table)"
+  ],
+  "references": [
+    "Lesson A2: Arithmetic & Logic — ADD, SUB, CMP",
+    "Lesson A3: Control Flow — JNE, JE, JG, JL",
+    "Intel SDM Vol 2: CMP, Jcc instructions",
+    "x64 Calling Convention — RAX return value"
+  ],
+  "extensions": [
+    "Modify the loop to sum 1..10 (change RCX initial value)",
+    "Convert to a `while` loop structure (check at top)",
+    "Add a second nested loop",
+    "Research: How does the compiler optimize this loop? (e.g., `lea` + `loop` instruction)"
+  ],
+  "solution": "## Control Flow Tracing — Solution\n\nThe routine computes the sum `5 + 4 + 3 + 2 + 1`:\n\n| Step | RAX | RCX | Notes |\n|------|-----|-----|-------|\n| mov rax, 0  | 0  | — | initialize accumulator |\n| mov rcx, 5  | 0  | 5 | loop counter |\n| mov rdx, 0  | 0  | 5 | (unused in loop) |\n| loop: add rax, rcx | 5 | 5 | 0+5 |\n| sub rcx, 1  | 5  | 4 | |\n| cmp rcx, 0 → ZF=0 | | | not equal |\n| jne loop (taken) | ... | | |\n| ... repeats ... | | | |\n| add rax, rcx | 15 | 0 | final: 5+4+3+2+1 = 15 |\n| sub rcx, 1  | 15 | -1 | |\n| cmp rcx, 0 → ZF=0 | | | |\n| jne loop — but wait... | | | |\n\nActually: when RCX reaches 0, `cmp rcx, 0` sets ZF=1, so `jne` is **not** taken. Execution falls through.\n\n1. **RAX = 15** (sum of 1..5)\n2. **Loop body runs 5 times**\n3. **JNE depends on ZF** — jumps while ZF=0 (result not zero)."
+}

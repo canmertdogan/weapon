@@ -1,0 +1,86 @@
+{
+  "id": "lab-17",
+  "title": "IOC Extraction",
+  "module": "malware",
+  "lesson": "m5",
+  "description": "Extract the full indicator-of-compromise profile from a sample.",
+  "difficulty": "Easy",
+  "estimatedTime": 15,
+  "prerequisites": [
+    "m5-ioc-reporting",
+    "sa1-strings-metadata",
+    "sa2-imports-exports",
+    "IOC types: network, host, persistence, file, registry, mutex",
+    "STIX/OpenIOC/MISP formats"
+  ],
+  "binary": {
+    "format": "raw",
+    "name": "implant.bin",
+    "file": "/binaries/lab-17.hex",
+    "bytes": 256
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "type": "string",
+      "prompt": "What is the C2 URL (network IOC)?",
+      "answer": "http://evil.example.net/update"
+    },
+    {
+      "id": "q2",
+      "type": "string",
+      "prompt": "What is the mutex name (host IOC)?",
+      "answer": "global\\mutex_zz9"
+    },
+    {
+      "id": "q3",
+      "type": "string",
+      "prompt": "What registry path is the persistence IOC?",
+      "answer": "hkcu\\software\\microsoft\\windows\\currentversion\\run"
+    },
+    {
+      "id": "q4",
+      "type": "string",
+      "prompt": "What file path does the implant drop to?",
+      "answer": "%temp%\\svc.exe"
+    }
+  ],
+  "hints": [
+    "Four IOC categories: network, host, persistence, dropped file.",
+    "The mutex is a Global\\ mutex.",
+    "The dropped path uses the TEMP environment variable."
+  ],
+  "methodology": "## Investigation Methodology\n\n### 1. Systematic String Extraction\n- Run `strings -a -el sample.bin > strings.txt`\n- Also check Ghidra's Defined Strings window\n- Categorize every string by IOC type\n\n### 2. IOC Taxonomy\n| Category | Sub-types | Examples |\n|----------|-----------|----------|\n| **Network** | Domain, IP, URL, User-Agent, Certificate | `c2.evil.com`, `1.2.3.4:443` |\n| **Host** | Mutex, Pipe, Event, Semaphore, Window class | `Global\\mutex_xyz` |\n| **Persistence** | Run key, Service, Scheduled Task, WMI, Startup | `HKCU\\...\\Run` |\n| **File** | Dropped path, Loaded DLL, Written file | `%TEMP%\\svc.exe` |\n| **Registry** | Key paths, Value names, Data | `HKLM\\Software\\...` |\n| **Artifact** | Hash (MD5/SHA256), PDB path, Compile time | `a1b2c3...`, `C:\\build\\malware.pdb` |\n\n### 3. Correlation & Context\n- **Single IOC** = Low fidelity (e.g., `kernel32.dll` is not an IOC)\n- **Clustered IOCs** = High fidelity (mutex + C2 + persistence = implant)\n- **Behavioral context**: What *uses* the IOC? (API call trace)\n\n### 4. Standardize Output\nFormat for sharing:\n- **STIX 2.1**: Structured threat intelligence\n- **OpenIOC**: Mandiant format\n- **MISP**: Platform-agnostic\n- **CSV/JSON**: Simple ingestion\n\n### 5. Enrichment\n- **Passive DNS**: Domain history, resolutions\n- **VT/URLhaus**: Malicious verdicts, relationships\n- **WHOIS**: Registrar, creation date, privacy\n- **SSL Certs**: JA3, issuer, validity\n- **File Reputation**: Hash lookup, sandbox reports",
+  "commonPitfalls": [
+    "Including non-IOCs (common DLLs, system paths, generic strings)",
+    "Missing Unicode/UTF-16 strings — always use `strings -el`",
+    "Not normalizing paths (case, env vars, short vs long names)",
+    "Forgetting file hashes — primary identifier for sharing",
+    "Not categorizing — raw string list is not an IOC report"
+  ],
+  "tools": [
+    "strings (GNU) with `-a -el`",
+    "FLOSS (FireEye) for encoded strings",
+    "Ghidra (Defined Strings, Cross-references)",
+    "Malcat (fast triage + IOC extraction)",
+    "CAPA (Mandiant) — auto capability + IOC detection",
+    "YARA (rule-based extraction)",
+    "MISP / OpenCTI (platform)"
+  ],
+  "references": [
+    "Lesson M5: IOC Reporting",
+    "Lesson SA1: Strings & Metadata",
+    "STIX 2.1 Specification",
+    "OpenIOC 1.1",
+    "MISP Taxonomy",
+    "MITRE ATT&CK: IOC mapping per technique"
+  ],
+  "extensions": [
+    "Convert findings to STIX 2.1 bundle",
+    "Write a YARA rule that matches all 4 IOC categories",
+    "Submit IOCs to MISP instance",
+    "Research: How to extract IOCs from memory dump (Volatility)?",
+    "Build an automated IOC extractor pipeline"
+  ],
+  "solution": "## IOC Extraction — Solution\n\nThe full IOC profile:\n\n1. **Network**: `http://evil.example.net/update`\n2. **Host (mutex)**: `Global\\mutex_zz9`\n3. **Persistence**: `HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run`\n4. **Dropped file**: `%TEMP%\\svc.exe`\n\nEach is an atomic IOC a defender can blocklist or hunt for. Together they describe an implant that drops a payload, persists via the Run key, guards against double-run with a mutex, and phones home."
+}

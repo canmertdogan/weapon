@@ -1,0 +1,86 @@
+{
+  "id": "lab-20",
+  "title": "ELF Header Forensics",
+  "module": "linux",
+  "lesson": "l1",
+  "description": "Walk a raw ELF64 header byte-by-byte and pull out the fields a loader relies on to map and run the file.",
+  "difficulty": "Easy",
+  "estimatedTime": 15,
+  "prerequisites": [
+    "l1-elf-format-deep-dive",
+    "f1-binary-anatomy",
+    "ELF64 header structure (e_ident, e_type, e_machine, e_entry, e_phoff, e_phnum)",
+    "Little-endian byte order",
+    "PIE vs ET_EXEC"
+  ],
+  "binary": {
+    "format": "ELF",
+    "name": "sample.elf",
+    "hex": "7f454c4602010100000000000000000003003e00010000002010000000000000400000000000000000200000000000000000000040003800040040001e001d000600000004000000400000000000000040000000000000004000000000000000e000000000000000e000000000000000080000000000000003000000040000002001000000000000200100000000000020010000000000001c000000000000001c000000000000000100000000000000010000000500000000000000000000000000000000000000000000000000000000100000000000000010000000000000001000000000000001000000060000000010000000000000001020000000000000102000000000003002000000000000380200000000000000100000000000002f6c696236342f6c642d6c696e75782d7838362d36342e736f2e3200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "bytes": 512
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "type": "offset",
+      "prompt": "What is e_phoff (the program header table's file offset), in hex? (format: 0x...)",
+      "answer": "0x40"
+    },
+    {
+      "id": "q2",
+      "type": "number",
+      "prompt": "How many program headers does this file have (e_phnum), in decimal?",
+      "answer": "4"
+    },
+    {
+      "id": "q3",
+      "type": "offset",
+      "prompt": "What is the entry point address (e_entry), in hex? (format: 0x...)",
+      "answer": "0x1020"
+    },
+    {
+      "id": "q4",
+      "type": "string",
+      "prompt": "e_type is 0x03 (ET_DYN) rather than 0x02 (ET_EXEC). What class of executable does that make this — the kind the kernel loads at a randomized base address?",
+      "answer": "pie"
+    }
+  ],
+  "hints": [
+    "e_ident (the first 16 bytes) is fixed-size and always precedes the rest of the header — everything after it is a field defined by struct offset, not a search.",
+    "Every Elf64_* field is little-endian: bytes 0x40 0x00 0x00 0x00 0x00 0x00 0x00 0x00 read as the value 0x40, not 0x4000000000000000.",
+    "e_phnum sits right after e_phentsize in the fixed Elf64_Ehdr layout — both are 2-byte fields.",
+    "ET_DYN binaries are position-independent — that's what lets ASLR randomize their base address at load time. Modern Linux binaries default to this."
+  ],
+  "methodology": "## Investigation Methodology\n\n### 1. ELF64 Header Layout (Fixed 64 bytes)\nUnlike PE's indirection via `e_lfanew`, ELF header is at fixed offset 0:\n\n```c\ntypedef struct {\n  unsigned char e_ident[16];  // 0x00-0x0F\n  uint16_t      e_type;       // 0x10-0x11\n  uint16_t      e_machine;    // 0x12-0x13\n  uint32_t      e_version;    // 0x14-0x17\n  uint64_t      e_entry;      // 0x18-0x1F\n  uint64_t      e_phoff;      // 0x20-0x27\n  uint64_t      e_shoff;      // 0x28-0x2F\n  uint32_t      e_flags;      // 0x30-0x33\n  uint16_t      e_ehsize;     // 0x34-0x35\n  uint16_t      e_phentsize;  // 0x36-0x37\n  uint16_t      e_phnum;      // 0x38-0x39\n  uint16_t      e_shentsize;  // 0x3A-0x3B\n  uint16_t      e_shnum;      // 0x3C-0x3D\n  uint16_t      e_shstrndx;   // 0x3E-0x3F\n} Elf64_Ehdr;\n```\n\n### 2. e_ident (0x00-0x0F) - Magic + Meta\n| Offset | Field | Value |\n|--------|-------|-------|\n| 0x00 | EI_MAG0-3 | 0x7F 'E' 'L' 'F' |\n| 0x04 | EI_CLASS | 0x02 = 64-bit |\n| 0x05 | EI_DATA | 0x01 = LSB (little-endian) |\n| 0x06 | EI_VERSION | 0x01 = current |\n| 0x07 | EI_OSABI | 0x00 = System V |\n| 0x08 | EI_ABIVERSION | 0x00 |\n| 0x09-0x0F | EI_PAD | Zero |\n\n### 3. Key Fields (Little-Endian!)\n| Field | Offset | Size | Example Bytes | Value |\n|-------|--------|------|---------------|-------|\n| e_type | 0x10 | 2 | 03 00 | 0x0003 (ET_DYN) |\n| e_machine | 0x12 | 2 | 3E 00 | 0x003E (x86_64) |\n| e_version | 0x14 | 4 | 01 00 00 00 | 1 |\n| **e_entry** | **0x18** | **8** | **20 10 00 00 00 00 00 00** | **0x1020** |\n| **e_phoff** | **0x20** | **8** | **40 00 00 00 00 00 00 00** | **0x40** |\n| e_shoff | 0x28 | 8 | ... | ... |\n| e_phentsize | 0x36 | 2 | 38 00 | 0x38 (56 bytes) |\n| **e_phnum** | **0x38** | **2** | **04 00** | **4** |\n\n### 4. e_type Values\n| Value | Constant | Meaning |\n|-------|----------|---------|\n| 0x01 | ET_REL | Relocatable (.o) |\n| **0x02** | **ET_EXEC** | **Executable (fixed base)** |\n| **0x03** | **ET_DYN** | **Shared object / PIE** |\n| 0x04 | ET_CORE | Core dump |\n\n**PIE (ET_DYN)** = Position Independent Executable = ASLR-friendly.\n\n### 5. Program Headers (at e_phoff)\nEach 56 bytes (e_phentsize):\n```c\ntypedef struct {\n  uint32_t p_type;    // PT_LOAD, PT_INTERP, PT_PHDR, PT_DYNAMIC, PT_TLS\n  uint32_t p_flags;   // PF_R, PF_W, PF_X\n  uint64_t p_offset;  // File offset\n  uint64_t p_vaddr;   // Virtual address\n  uint64_t p_paddr;   // Physical (ignored)\n  uint64_t p_filesz;  // Size in file\n  uint64_t p_memsz;   // Size in memory\n  uint64_t p_align;   // Alignment\n} Elf64_Phdr;\n```\n\n### 6. PT_LOAD Segments = Memory Mappings\n| p_type | p_flags | Purpose |\n|--------|---------|---------|\n| PT_LOAD | R+X | Code segment (.text) |\n| PT_LOAD | R+W | Data segment (.data, .bss) |\n| PT_INTERP | - | Dynamic linker path (e.g., /lib64/ld-linux-x86-64.so.2) |\n| PT_DYNAMIC | - | .dynamic section (relocations, needed libs) |\n| PT_TLS | - | Thread-local storage |\n\n### 7. Dynamic Section (.dynamic)\nEntries: DT_NEEDED (libraries), DT_STRTAB/DT_SYMTAB (symbols), DT_RELA/DT_REL (relocations), DT_INIT/DT_FINI (constructors/destructors).",
+  "commonPitfalls": [
+    "Reading multi-byte fields as big-endian (ELF is little-endian on x86_64)",
+    "Confusing e_shoff (section header table) with e_phoff (program header table)",
+    "Missing that ET_DYN = PIE = ASLR-enabled (modern default)",
+    "Not verifying e_ident magic (0x7F 'ELF') first",
+    "Assuming section headers exist (stripped binaries have e_shoff=0)"
+  ],
+  "tools": [
+    "readelf -h sample.elf (header)",
+    "readelf -l sample.elf (program headers/segments)",
+    "readelf -d sample.elf (dynamic section)",
+    "objdump -x sample.elf (all headers)",
+    "Ghidra / Binary Ninja (ELF support)",
+    "pefile equivalent: pyelftools (Python)",
+    "Built-in Hex Viewer"
+  ],
+  "references": [
+    "Lesson L1: ELF Format Deep Dive",
+    "Lesson F1: Binary Anatomy (PE vs ELF comparison)",
+    "ELF Specification (System V ABI)",
+    "man 5 elf",
+    "How programs get run (execve, ld-linux)"
+  ],
+  "extensions": [
+    "Parse the program headers manually from the hex dump",
+    "Identify which PT_LOAD is code (R+X) and which is data (R+W)",
+    "Find the PT_INTERP path — the dynamic linker",
+    "Research: How does the dynamic linker resolve DT_NEEDED libraries?",
+    "Analyze a stripped vs unstripped ELF — what's missing?"
+  ],
+  "solution": "## ELF Header Forensics — Solution\n\nUnlike the PE format's `MZ` → `e_lfanew` indirection, the ELF64 header (`Elf64_Ehdr`) is a single fixed 64-byte struct — every field lives at a constant offset:\n\n| Offset | Field | Value |\n|--------|-------|-------|\n| 0x00 | `e_ident` | `\\x7fELF`, class=64-bit, data=LSB |\n| 0x10 | `e_type` | `0x0003` (ET_DYN) |\n| 0x12 | `e_machine` | `0x003e` (EM_X86_64) |\n| 0x18 | `e_entry` | `0x1020` |\n| 0x20 | `e_phoff` | `0x40` |\n| 0x38 | `e_phnum` | `4` |\n\n1. **e_phoff = 0x40** — the program header table starts immediately after the 64-byte header.\n2. **4 program headers** — in this sample: PT_PHDR, PT_INTERP, and two PT_LOAD segments (one `r-x` for code, one `rw-` for data).\n3. **e_entry = 0x1020** — where `_start` begins once the file is mapped.\n4. **PIE** (Position-Independent Executable) — `ET_DYN` means this is really a shared-object-shaped executable, letting the kernel map it anywhere and randomize its base for ASLR."
+}

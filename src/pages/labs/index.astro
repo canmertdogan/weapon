@@ -1,0 +1,52 @@
+---
+import Base from '../../layouts/Base.astro';
+import Header from '../../components/layout/Header.astro';
+import Footer from '../../components/layout/Footer.astro';
+import { getAllLabs } from '../../utils/labs';
+import { BASE } from '../../utils/base';
+
+const labs = getAllLabs();
+
+const difficultyBadge: Record<string, string> = {
+  Trivial: 'badge-trivial',
+  Easy: 'badge-easy',
+  Medium: 'badge-medium',
+  Hard: 'badge-hard',
+};
+---
+
+<Base title="Labs">
+  <Header slot="header" />
+
+  <header class="py-12">
+    <h1 class="text-3xl md:text-4xl mb-4">Labs</h1>
+    <p class="text-fg-muted max-w-2xl">
+      Hands-on challenges that run entirely in your browser. Each lab is paired with a course lesson.
+    </p>
+  </header>
+
+  <section class="grid grid-cols-1 md:grid-cols-2 gap-6 pb-12">
+    {labs.map((lab) => (
+      <a href={`${BASE}labs/${lab.id}`} data-lab-id={lab.id} class="card card-hover flex flex-col gap-3 no-underline">
+        <div class="flex items-center justify-between gap-2">
+          <span class="font-mono text-xs text-accent">{lab.id.toUpperCase()}</span>
+          <span class="flex items-center gap-2">
+            <span class="completion-mark hidden text-accent" aria-hidden="true">✓</span>
+            <span class:list={['badge', difficultyBadge[lab.difficulty] || 'badge-medium']}>{lab.difficulty}</span>
+          </span>
+        </div>
+        <h2 class="text-xl font-display text-fg">{lab.title}</h2>
+        <p class="text-sm text-fg-muted flex-1">{lab.description}</p>
+        <div class="flex items-center justify-between text-sm text-fg-muted pt-2 border-t border-border">
+          <span>Module: {lab.module}</span>
+          <span class="flex items-center gap-3">
+            {lab.estimatedTime && <span>{lab.estimatedTime} min</span>}
+            <span>{lab.questions.length} question{lab.questions.length !== 1 ? 's' : ''}</span>
+          </span>
+        </div>
+      </a>
+    ))}
+  </section>
+
+  <Footer slot="footer" />
+</Base>

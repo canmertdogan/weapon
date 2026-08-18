@@ -1,0 +1,87 @@
+{
+  "id": "lab-21",
+  "title": "ARM64 Register Trace",
+  "module": "arm-mobile",
+  "lesson": "arm2",
+  "description": "Trace a short AArch64 routine by hand and determine the final register state and how many times its loop executes.",
+  "difficulty": "Easy",
+  "estimatedTime": 15,
+  "prerequisites": [
+    "arm1-arm64-architecture-basics",
+    "arm2-arm64-calling-convention-and-the-stack",
+    "AArch64 register names (X0-X30, W0-W30, SP, PC, NZCV)",
+    "Conditional branch flags (N, Z, C, V)"
+  ],
+  "binary": null,
+  "code": {
+    "labels": {
+      "loop": 2
+    },
+    "instructions": [
+      { "address": 0, "op": "mov", "args": ["x0", "#10"] },
+      { "address": 1, "op": "mov", "args": ["x1", "#3"] },
+      { "address": 2, "op": "add", "args": ["x0", "x0", "x1"] },
+      { "address": 3, "op": "sub", "args": ["x1", "x1", "#1"] },
+      { "address": 4, "op": "cmp", "args": ["x1", "#0"] },
+      { "address": 5, "op": "bne", "args": ["loop"] },
+      { "address": 6, "op": "mov", "args": ["x2", "x0"] },
+      { "address": 7, "op": "ret", "args": [] }
+    ]
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "type": "number",
+      "prompt": "What is the final decimal value in X0 after execution completes?",
+      "answer": "16"
+    },
+    {
+      "id": "q2",
+      "type": "number",
+      "prompt": "How many times does the loop body (ADD/SUB/CMP/BNE) execute?",
+      "answer": "3"
+    },
+    {
+      "id": "q3",
+      "type": "string",
+      "prompt": "Which single condition flag does BNE check to decide whether to branch — one letter (N, Z, C, or V)?",
+      "answer": "z"
+    }
+  ],
+  "hints": [
+    "AArch64 immediates use a # prefix (#10, #3) instead of x86's bare numbers — same idea, different syntax.",
+    "X0 accumulates X1 into itself each pass; X1 counts down from 3 to 0.",
+    "BNE branches while the result of the last CMP was not equal — that's the Z (zero) flag being clear."
+  ],
+  "methodology": "## Investigation Methodology\n\n### 1. AArch64 Instruction Syntax\n- `mov x0, #10` → X0 = 10 (immediate with # prefix)\n- `add x0, x0, x1` → X0 = X0 + X1 (three-operand form)\n- `sub x1, x1, #1` → X1 = X1 - 1\n- `cmp x1, #0` → Compare X1 with 0, sets NZCV flags\n- `bne loop` → Branch if Z=0 (Not Equal)\n- `ret` → Return (BR X30)\n\n### 2. Register Mapping (ARM64 → x86-64)\n| AArch64 | x86-64 | Role |\n|---------|--------|------|\n| X0-X7 | RDI, RSI, RDX, RCX, R8, R9 | Argument/Return registers |\n| X8 | — | Indirect result |\n| X9-X15 | R10, R11, R12, R13, R14, R15 | Caller-saved (volatile) |\n| X16-X17 | — | Intra-procedure call scratch |\n| X18 | — | Platform register (OS) |\n| X19-X28 | RBX, RBP, R12, R13, R14, R15 | Callee-saved (non-volatile) |\n| X29 (FP) | RBP | Frame pointer |\n| X30 (LR) | — | Link register (return address) |\n| SP | RSP | Stack pointer |\n| PC | RIP | Program counter |\n\n### 3. NZCV Condition Flags\n| Flag | Bit | Set When |\n|------|-----|----------|\n| **N** (Negative) | 31 | Result MSB = 1 (negative) |\n| **Z** (Zero) | 30 | Result = 0 |\n| **C** (Carry) | 29 | Unsigned overflow (carry out) |\n| **V** (Overflow) | 28 | Signed overflow |\n\n**Condition Codes**:\n- `EQ` / `NE` : Z=1 / Z=0\n- `CS` / `CC` : C=1 / C=0 (unsigned >= / <)\n- `MI` / `PL` : N=1 / N=0 (negative / positive)\n- `VS` / `VC` : V=1 / V=0 (overflow)\n- `HI` : C=1 and Z=0 (unsigned >)\n- `LS` : C=0 or Z=1 (unsigned <=)\n- `GE` / `LT` : N=V / N≠V (signed >= / <)\n- `GT` / `LE` : Z=0 and N=V / Z=1 or N≠V (signed > / <=)\n\n### 4. Trace Execution\n| Pass | X0 | X1 | CMP Result | Z | BNE |\n|------|-----|-----|------------|---|-----|\n| 1 | 10+3=13 | 3-1=2 | 2≠0 | 0 | taken |\n| 2 | 13+2=15 | 2-1=1 | 1≠0 | 0 | taken |\n| 3 | 15+1=16 | 1-1=0 | 0=0 | 1 | NOT taken |\n\n### 5. Loop Analysis Pattern\n- Counter in X1 starts at N (3)\n- Decrements each iteration\n- Loop runs while counter ≠ 0 → N iterations\n- Accumulator X0 adds decreasing counter: N + (N-1) + ... + 1\n\n### 6. Key Differences from x86\n- **Explicit immediates**: `#10` not `10`\n- **Three-operand ALU**: `add dest, src1, src2` (dest ≠ src1 allowed)\n- **Flags only from CMP/CCMP**: ALU ops don't set flags by default\n- **Condition suffixes**: `b.ne` = branch if not equal\n- **No `ret` with pop**: Return address in X30 (LR), `ret` = `br x30`",
+  "commonPitfalls": [
+    "Confusing AArch64 `bne` (branch if Z=0) with x86 `jne` (same logic, different name)",
+    "Forgetting that ALU instructions (`add`, `sub`) DON'T set flags — only `cmp`/`ccmp` do",
+    "Misreading `mov x0, #10` as move from register 10 (it's immediate 10)",
+    "Assuming X0-X7 are callee-saved (they're volatile — caller-saved)",
+    "Not knowing that `ret` uses X30 (Link Register), not stack"
+  ],
+  "tools": [
+    "Ghidra (AArch64 support)",
+    "Binary Ninja (ARM64)",
+    "IDA Pro (ARM64)",
+    "GDB (aarch64-linux-gnu-gdb)",
+    "ARM64 Assembly Reference Card",
+    "Built-in Assembly Visualizer"
+  ],
+  "references": [
+    "Lesson ARM1: ARM64 Architecture Basics",
+    "Lesson ARM2: ARM64 Calling Convention & Stack",
+    "ARM Architecture Reference Manual (ARMv8-A)",
+    "AArch64 Quick Reference Card",
+    "Procedure Call Standard for the ARM 64-bit Architecture (AAPCS64)"
+  ],
+  "extensions": [
+    "Translate the loop to x86-64 assembly — compare instruction count",
+    "Modify loop to sum 1..10 (change X1 initial value)",
+    "Research: How does AArch64 handle function calls (BL/BLR) and LR?",
+    "Analyze an Android ARM64 binary — find a loop, trace registers",
+    "Compare: AArch64 conditional execution vs x86 flag-based jumps"
+  ],
+  "solution": "## ARM64 Register Trace — Solution\n\n| Pass | X0 (before → after ADD) | X1 (before → after SUB) | CMP X1, #0 | BNE |\n|------|---------------------------|---------------------------|------------|-----|\n| 1 | 10 → 13 | 3 → 2 | 2 ≠ 0 (Z=0) | taken |\n| 2 | 13 → 15 | 2 → 1 | 1 ≠ 0 (Z=0) | taken |\n| 3 | 15 → 16 | 1 → 0 | 0 = 0 (Z=1) | not taken |\n\nAfter the third pass, `cmp x1, #0` sets `Z=1` (result was zero), so `bne loop` falls through instead of branching.\n\n1. **X0 = 16** (10 + 3 + 2 + 1)\n2. **The loop body runs 3 times**\n3. **Z** — BNE branches when the zero flag is clear (last result ≠ 0)\n\nSame reasoning as x86's ZF/JNE — AArch64 just names its flags N/Z/C/V and spells the mnemonic BNE instead of JNE."
+}

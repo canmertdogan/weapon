@@ -1,0 +1,83 @@
+{
+  "id": "lab-15",
+  "title": "C2 Configuration Extraction",
+  "module": "malware",
+  "lesson": "m3",
+  "description": "Extract the command-and-control configuration from a sample's strings.",
+  "difficulty": "Easy",
+  "estimatedTime": 10,
+  "prerequisites": [
+    "m3-command-and-control",
+    "sa1-strings-metadata",
+    "WinINet API (InternetOpen, InternetConnect, HttpOpenRequest, HttpSendRequest)",
+    "Common C2 protocols (HTTP/S, DNS, custom TCP)"
+  ],
+  "binary": {
+    "format": "raw",
+    "name": "beacon.bin",
+    "file": "/binaries/lab-15.hex",
+    "bytes": 256
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "type": "string",
+      "prompt": "What is the C2 domain?",
+      "answer": "c2.example.com"
+    },
+    {
+      "id": "q2",
+      "type": "string",
+      "prompt": "What port does the implant connect to?",
+      "answer": "443"
+    },
+    {
+      "id": "q3",
+      "type": "string",
+      "prompt": "What URL path is used for beaconing?",
+      "answer": "beacon.php"
+    },
+    {
+      "id": "q4",
+      "type": "string",
+      "prompt": "Which API connects to the C2 server?",
+      "answer": "internetconnectw"
+    }
+  ],
+  "hints": [
+    "The domain, port, and path together define the C2 endpoint.",
+    "Port 443 means HTTPS.",
+    "InternetConnectW takes host + port."
+  ],
+  "methodology": "## Investigation Methodology\n\n### 1. Identify Network APIs\nSearch imports or strings for:\n- **WinINet**: `InternetOpen`, `InternetConnect`, `HttpOpenRequest`, `HttpSendRequest`, `InternetReadFile`\n- **Winsock**: `WSASocket`, `connect`, `send`, `recv`, `WSAConnect`\n- **WinHTTP**: `WinHttpOpen`, `WinHttpConnect`, `WinHttpOpenRequest`, `WinHttpSendRequest`\n- **Custom**: Raw TCP/UDP, DNS tunnels, HTTPS via Schannel\n\n### 2. Trace Data Flow to API Calls\nIn Ghidra/decompiler:\n- Find call to `InternetConnectW`\n- Trace arguments backward:\n  - `lpszServerName` (host/domain) string reference\n  - `nServerPort` (port) constant or variable\n  - Context: `InternetOpen` -> `InternetConnect` -> `HttpOpenRequest` -> `HttpSendRequest`\n\n### 3. Extract Configuration Elements\n| Element | Source | Example |\n|---------|--------|---------|\n| **Domain/IP** | String referenced by `InternetConnectW` arg 1 | `c2.example.com` |\n| **Port** | `InternetConnectW` arg 2 | `443` |\n| **Path/URI** | `HttpOpenRequest` arg 3 (`lpszObjectName`) | `/beacon.php` |\n| **User-Agent** | `HttpOpenRequest` arg 4 | `Mozilla/5.0...` |\n| **Headers** | `HttpAddRequestHeaders` buffers | `Authorization: Bearer...` |\n| **Protocol** | Port (80=HTTP, 443=HTTPS) or `INTERNET_FLAG_SECURE` | HTTPS |\n\n### 4. Handle Obfuscation\n- **Stack strings**: Built character-by-character on stack\n- **XOR/ADD encoded**: Decoded at runtime before API call\n- **Resource-embedded**: Stored in `.rsrc`, loaded via `FindResource`/`LoadResource`\n- **DGA**: Domain generated algorithmically\n\n### 5. Build Full Endpoint\nProtocol: HTTPS (port 443), Domain: c2.example.com, Path: /beacon.php. Full: https://c2.example.com:443/beacon.php\n\n### 6. Pivot for Intelligence\n- Passive DNS / WHOIS on domain\n- SSL certificate analysis (JA3 fingerprint)\n- Historical resolutions (VirusTotal, SecurityTrails)\n- C2 panel identification (path patterns)\n- Infrastructure clustering",
+  "commonPitfalls": [
+    "Only checking imports — missing dynamically resolved APIs (`GetProcAddress`)",
+    "Assuming port 80/443 — malware uses non-standard ports (8080, 8443, 6666)",
+    "Missing the path — `HttpOpenRequest` `lpszObjectName` is separate from domain",
+    "Overlooking User-Agent and headers — valuable for detection signatures",
+    "Not checking for multiple C2s (fallback domains, domain lists)"
+  ],
+  "tools": [
+    "Ghidra (Decompiler, Cross-references, Defined Strings)",
+    "Binary Ninja (Data flow analysis)",
+    "FLOSS (obfuscated string extraction)",
+    "Wireshark / PCAP analysis (dynamic)",
+    "Malcat / PE-bear (quick string + import scan)",
+    "YARA rules for C2 config patterns"
+  ],
+  "references": [
+    "Lesson M3: Command and Control",
+    "Lesson SA1: Strings & Metadata",
+    "Microsoft Docs: WinINet API Reference",
+    "MITRE ATT&CK: T1071.001 (Web Protocols)",
+    "Mandiant: C2 Infrastructure Analysis"
+  ],
+  "extensions": [
+    "Extract config from a real sample with encoded strings (XOR, RC4)",
+    "Write a Ghidra script to auto-extract WinINet C2 configs",
+    "Research: DNS tunneling C2 — how to detect via strings?",
+    "Analyze a sample with Domain Generation Algorithm (DGA)",
+    "Build a C2 config extractor for common frameworks (Cobalt Strike, Sliver, Mythic)"
+  ],
+  "solution": "## C2 Configuration Extraction — Solution\n\nThe C2 config is fully hardcoded:\n\n1. **Domain**: `c2.example.com`\n2. **Port**: `443` (HTTPS)\n3. **Path**: `beacon.php`\n4. **API**: `InternetConnectW` (WinINet HTTP)\n\nFull endpoint: `https://c2.example.com:443/beacon.php`\n\n**Methodology**: find the network API, then the values it consumes (host, port, path) — those are the C2 IOCs."
+}

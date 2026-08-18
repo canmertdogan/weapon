@@ -1,0 +1,11 @@
+---
+interface Props {
+  initialCode?: string;
+  title?: string;
+  id?: string;
+}
+const { initialCode = '', title = 'Instruction Playground' } = Astro.props;
+const payload = JSON.stringify({ initialCode, title });
+---
+
+<div data-weapon-component="instruction-playground" data-weapon-props={payload}></div>

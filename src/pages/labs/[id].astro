@@ -1,0 +1,388 @@
+---
+import Base from '../../layouts/Base.astro';
+import Header from '../../components/layout/Header.astro';
+import Footer from '../../components/layout/Footer.astro';
+import { marked } from 'marked';
+import { getAllLabs } from '../../utils/labs';
+import { BASE } from '../../utils/base';
+
+export async function getStaticPaths() {
+  const labs = getAllLabs();
+  return labs.map((lab) => ({ params: { id: lab.id }, props: { lab } }));
+}
+
+const { lab } = Astro.props;
+const basePath = BASE.replace(/\/$/, '');
+const binaryUrl = lab.binary?.file ? `${basePath}${lab.binary.file}` : '';
+const solutionHtml = marked.parse(lab.solution);
+const methodologyHtml = lab.methodology ? marked.parse(lab.methodology) : '';
+
+const difficultyBadge: Record<string, string> = {
+  Trivial: 'badge-trivial',
+  Easy: 'badge-easy',
+  Medium: 'badge-medium',
+  Hard: 'badge-hard',
+};
+---
+
+<Base title={`${lab.title} — Lab`}>
+  <Header slot="header" />
+
+  <div class="max-w-4xl mx-auto">
+    <header class="py-10">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="font-mono text-sm text-accent">{lab.id.toUpperCase()}</span>
+        <span class:list={['badge', difficultyBadge[lab.difficulty] || 'badge-medium']}>{lab.difficulty}</span>
+      </div>
+      <h1 class="text-3xl md:text-4xl mb-4">{lab.title}</h1>
+      <p class="text-fg-muted max-w-2xl">{lab.description}</p>
+      <div class="flex flex-wrap gap-2 mt-4">
+        {lab.estimatedTime && (
+          <span class="badge">{lab.estimatedTime} min</span>
+        )}
+        {lab.prerequisites?.length > 0 && (
+          <span class="badge badge-easy">{lab.prerequisites.length} prerequisites</span>
+        )}
+        {lab.tools?.length > 0 && (
+          <span class="badge badge-medium">{lab.tools.length} tools</span>
+        )}
+      </div>
+    </header>
+
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-12">
+      <div>
+        <h2 class="text-xl mb-4">Investigate</h2>
+        {lab.binary && (
+          <div>
+            <div
+              id="lab-hex"
+              data-binary-url={binaryUrl}
+              data-binary-hex={lab.binary.hex || ''}
+              class="mb-4"
+            ></div>
+            {lab.binary.file && (
+              <a href={binaryUrl} download class="btn btn-secondary text-sm mb-4">
+                Download {lab.binary.name}
+              </a>
+            )}
+          </div>
+        )}
+        {lab.code && (
+          <div class="card mb-4">
+            <h3 class="text-sm uppercase tracking-wider text-fg-muted mb-3">Disassembly</h3>
+            <pre class="code-block text-xs"><code>{lab.code.instructions
+              .map((i) => `${String(i.address).padStart(2, '0')}:  ${i.op} ${i.args.join(', ')}`)
+              .join('\n')}</code></pre>
+          </div>
+        )}
+        <div class="mt-6">
+          <h3 class="text-lg mb-3">Hints</h3>
+          <div>
+            {lab.hints.map((hint, i) => (
+              <details class="accordion hint-item" data-hint-index={i}>
+                <summary class="text-sm">
+                  <span>Hint {i + 1}</span>
+                  <span class="accordion-caret" aria-hidden="true"></span>
+                </summary>
+                <div class="accordion-body">
+                  <p class="text-sm text-fg-muted">{hint}</p>
+                </div>
+              </details>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h2 class="text-xl mb-4">Submit Findings</h2>
+        <form id="lab-form" data-lab-id={lab.id} class="space-y-4">
+          {lab.questions.map((q) => (
+            <div class="card">
+              <label class="block text-sm font-medium mb-2" for={`q-${q.id}`}>{q.prompt}</label>
+              <input
+                type="text"
+                id={`q-${q.id}`}
+                data-answer={q.answer}
+                autocomplete="off"
+                class="w-full px-3 py-2 bg-bg border border-border rounded-md text-fg focus:outline-none focus:border-accent"
+                placeholder="Your answer"
+              />
+            </div>
+          ))}
+          <div class="flex items-center gap-4">
+            <button type="submit" class="btn btn-primary">Check Answers</button>
+            <span id="lab-result" class="text-sm font-medium"></span>
+          </div>
+        </form>
+
+        <div id="lab-solution" class="hidden mt-8">
+          <div class="card border-accent">
+            <h3 class="text-lg mb-3">Solution</h3>
+            <div class="solution-content" set:html={solutionHtml}></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="pb-12 space-y-6">
+      {lab.prerequisites?.length > 0 && (
+        <div class="card">
+          <h2 class="text-xl mb-3">Prerequisites</h2>
+          <ul class="list-none space-y-1">
+            {lab.prerequisites.map((p) => (
+              <li class="flex items-start gap-2 text-sm text-fg">
+                <svg class="mt-0.5 flex-shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>{p}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {methodologyHtml && (
+        <div class="card">
+          <h2 class="text-xl mb-3">Methodology</h2>
+          <div class="solution-content" set:html={methodologyHtml}></div>
+        </div>
+      )}
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {lab.commonPitfalls?.length > 0 && (
+          <div class="card">
+            <h2 class="text-xl mb-3">Common Pitfalls</h2>
+            <ul class="list-disc pl-5 space-y-1 text-sm text-fg">
+              {lab.commonPitfalls.map((p) => (
+                <li>{p}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {lab.tools?.length > 0 && (
+          <div class="card">
+            <h2 class="text-xl mb-3">Tools</h2>
+            <ul class="list-disc pl-5 space-y-1 text-sm text-fg">
+              {lab.tools.map((t) => (
+                <li>{t}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      {lab.references?.length > 0 && (
+        <div class="card">
+          <h2 class="text-xl mb-3">References</h2>
+          <ul class="list-disc pl-5 space-y-1 text-sm text-fg">
+            {lab.references.map((r) => (
+              <li>{r}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {lab.extensions?.length > 0 && (
+        <div class="card">
+          <h2 class="text-xl mb-3">Extensions & Challenges</h2>
+          <ul class="list-disc pl-5 space-y-1 text-sm text-fg">
+            {lab.extensions.map((e) => (
+              <li>{e}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
+  </div>
+
+  <Footer slot="footer" />
+</Base>
+
+<style>
+  .solution-content :global(h2) { margin: 1.5rem 0 0.75rem; font-size: 1.1rem; }
+  .solution-content :global(h3) { margin: 1.25rem 0 0.5rem; }
+  .solution-content :global(p) { margin: 0.6rem 0; line-height: 1.7; }
+  .solution-content :global(ul), .solution-content :global(ol) { margin: 0.6rem 0; padding-left: 1.25rem; }
+  .solution-content :global(li) { margin: 0.2rem 0; }
+  .solution-content :global(code) {
+    background: var(--color-bg-elevated);
+    padding: 0.125rem 0.375rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.875em;
+  }
+  .solution-content :global(pre) {
+    background: var(--color-bg);
+    border-left: 3px solid var(--color-accent);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    padding: var(--spacing-4);
+    overflow-x: auto;
+    font-size: 0.8125rem;
+    line-height: 1.7;
+    margin: 0.75rem 0;
+  }
+  .solution-content :global(pre code) { background: transparent; padding: 0; }
+  .solution-content :global(table) { border-collapse: collapse; width: 100%; margin: 0.75rem 0; font-size: 0.875rem; }
+  .solution-content :global(th), .solution-content :global(td) { border: 1px solid var(--color-border); padding: 0.4rem 0.6rem; text-align: left; }
+  .solution-content :global(th) { background: var(--color-bg-elevated); }
+  .solution-content :global(strong) { color: var(--color-accent); }
+
+  .hint-item summary::after {
+    content: attr(data-cooldown);
+    margin-left: var(--spacing-sm);
+    font-size: 0.75rem;
+    color: var(--color-warn);
+    font-family: var(--font-mono);
+  }
+  .hint-item[summary]:not([data-cooldown])::after {
+    content: '';
+  }
+  .hint-item[data-locked="true"] summary {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+</style>
+
+<script>
+  import { HexViewer } from '../../components/interactive/HexViewer';
+  import { markLabComplete } from '../../scripts/progress';
+  import { getCachedBinary, cacheBinary } from '../../utils/storage';
+
+  // Load binary sample with IndexedDB caching
+  async function loadBinary() {
+    const hexEl = document.getElementById('lab-hex');
+    if (!hexEl) return;
+    const url = hexEl.dataset.binaryUrl || '';
+    const inlineHex = hexEl.dataset.binaryHex || '';
+    if (!url && !inlineHex) return;
+
+    try {
+      let data: string;
+      if (url) {
+        // Try cache first
+        const cached = await getCachedBinary(url);
+        if (cached) {
+          data = cached;
+        } else {
+          const res = await fetch(url);
+          data = await res.text();
+          await cacheBinary(url, data);
+        }
+      } else {
+        data = inlineHex;
+      }
+      new HexViewer(hexEl, { data, mode: 'raw' });
+    } catch (e) {
+      console.warn('Failed to load binary', e);
+      hexEl.innerHTML = '<p class="text-sm text-fg-muted">Could not load binary sample.</p>';
+    }
+  }
+  loadBinary();
+
+  // Progressive hint reveal with cooldown
+  const hintItems = document.querySelectorAll('.hint-item');
+  const HINT_COOLDOWN = 30000; // 30 seconds
+  const labForm = document.getElementById('lab-form') as HTMLFormElement | null;
+  const labId = labForm?.dataset.labId || '';
+
+  hintItems.forEach((item, index) => {
+    const summary = item.querySelector('summary');
+    const body = item.querySelector('.accordion-body');
+    if (!summary || !body) return;
+
+    // Check if hint was previously revealed
+    const storageKey = `weapon:hint:${labId}:${index}`;
+    const revealed = localStorage.getItem(storageKey) === 'true';
+    const lastRevealed = parseInt(localStorage.getItem(`${storageKey}:time`) || '0', 10);
+    const canReveal = revealed || (Date.now() - lastRevealed > HINT_COOLDOWN);
+
+    if (canReveal) {
+      item.removeAttribute('data-locked');
+      summary.style.opacity = '1';
+      summary.style.cursor = 'pointer';
+    } else {
+      item.setAttribute('data-locked', 'true');
+      summary.style.opacity = '0.5';
+      summary.style.cursor = 'not-allowed';
+      const remaining = Math.ceil((HINT_COOLDOWN - (Date.now() - lastRevealed)) / 1000);
+      summary.setAttribute('data-cooldown', `Available in ${remaining}s`);
+    }
+
+    summary.addEventListener('click', (e) => {
+      if (!canReveal) {
+        e.preventDefault();
+        return;
+      }
+      if (!revealed) {
+        localStorage.setItem(storageKey, 'true');
+        localStorage.setItem(`${storageKey}:time`, String(Date.now()));
+      }
+    });
+  });
+
+  // Update cooldown display
+  setInterval(() => {
+    hintItems.forEach((item, index) => {
+      const summary = item.querySelector('summary');
+      if (!summary || item.hasAttribute('data-locked') === false) return;
+      const storageKey = `weapon:hint:${labId}:${index}`;
+      const lastRevealed = parseInt(localStorage.getItem(`${storageKey}:time`) || '0', 10);
+      const remaining = Math.ceil((HINT_COOLDOWN - (Date.now() - lastRevealed)) / 1000);
+      if (remaining > 0) {
+        summary.setAttribute('data-cooldown', `Available in ${remaining}s`);
+      } else {
+        item.removeAttribute('data-locked');
+        summary.style.opacity = '1';
+        summary.style.cursor = 'pointer';
+        summary.removeAttribute('data-cooldown');
+      }
+    });
+  }, 1000);
+
+  // Form validation
+  const form = labForm;
+  const resultEl = document.getElementById('lab-result');
+  const solutionBox = document.getElementById('lab-solution');
+
+  form?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const formLabId = form.dataset.labId || '';
+    const inputs = Array.from(form.querySelectorAll<HTMLInputElement>('input[data-answer]'));
+    let allCorrect = true;
+    let answered = 0;
+
+    inputs.forEach((input) => {
+      const userAnswer = input.value.trim().toLowerCase();
+      const correct = (input.dataset.answer || '').toLowerCase();
+      if (userAnswer === '') {
+        input.style.borderColor = '';
+        return;
+      }
+      answered++;
+      if (userAnswer === correct) {
+        input.style.borderColor = 'var(--color-accent)';
+      } else {
+        input.style.borderColor = 'var(--color-danger)';
+        allCorrect = false;
+      }
+    });
+
+    if (resultEl) {
+      if (answered < inputs.length) {
+        resultEl.textContent = 'Answer all questions first.';
+        resultEl.style.color = 'var(--color-warn)';
+        return;
+      }
+      if (allCorrect) {
+        resultEl.textContent = 'Correct. Challenge complete.';
+        resultEl.style.color = 'var(--color-accent)';
+        solutionBox?.classList.remove('hidden');
+        solutionBox?.scrollIntoView({ behavior: 'smooth' });
+        if (formLabId) markLabComplete(formLabId);
+      } else {
+        resultEl.textContent = 'Some answers are incorrect. Check the highlighted fields.';
+        resultEl.style.color = 'var(--color-danger)';
+      }
+    }
+  });
+</script>

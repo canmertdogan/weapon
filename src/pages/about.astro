@@ -1,0 +1,58 @@
+---
+import Base from '../layouts/Base.astro';
+import Header from '../components/layout/Header.astro';
+import Footer from '../components/layout/Footer.astro';
+---
+
+<Base title="About">
+  <Header slot="header" />
+
+  <div class="max-w-3xl mx-auto py-12">
+    <p class="font-mono text-sm text-accent tracking-[0.35em] uppercase mb-3">[ Dossier ]</p>
+    <h1 class="text-3xl md:text-4xl mb-6">About WEAPON</h1>
+
+    <div class="space-y-6 text-fg-muted">
+      <p class="text-lg">
+        WEAPON is a reverse engineering field manual disguised as an interactive website. It teaches practical
+        binary investigation methodology — not just terminology.
+      </p>
+
+      <div class="card">
+        <p class="font-mono text-xs text-accent mb-2">01</p>
+        <h2 class="text-xl text-fg mb-2">The Philosophy</h2>
+        <p>
+          Most resources teach tools. WEAPON teaches investigation. You won't just learn "a CALL instruction calls
+          a function" — you'll learn how to determine what function an unknown CALL invokes, what arguments it
+          receives, and why that function matters.
+        </p>
+        <p class="mt-3">
+          Every lesson follows the same loop: <strong class="text-accent">Concept → Observation → Reasoning → Investigation</strong>.
+        </p>
+      </div>
+
+      <div class="card">
+        <p class="font-mono text-xs text-accent mb-2">02</p>
+        <h2 class="text-xl text-fg mb-2">Static & Educational</h2>
+        <p>
+          WEAPON is a fully static website. There is no backend, no database, and no authentication. All
+          interactivity — visualizers, the instruction playground, and labs — runs entirely in your browser.
+          Your progress is stored locally.
+        </p>
+      </div>
+
+      <div class="card">
+        <p class="font-mono text-xs text-accent mb-2">03</p>
+        <h2 class="text-xl text-fg mb-2">A Note on Ethics</h2>
+        <p>
+          Reverse engineering is a legitimate discipline used for malware analysis, vulnerability research,
+          interoperability, and defensive security. WEAPON is designed for educational and defensive purposes only.
+          The techniques described here should be applied only to software you own or are authorized to analyze.
+        </p>
+      </div>
+
+      <p class="font-mono text-sm cursor-blink">WEAPON v0.1.0 — built with Astro, deployed on GitHub Pages.</p>
+    </div>
+  </div>
+
+  <Footer slot="footer" />
+</Base>

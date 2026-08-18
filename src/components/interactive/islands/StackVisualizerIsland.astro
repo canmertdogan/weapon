@@ -1,0 +1,11 @@
+---
+interface Props {
+  instructions: string[];
+  title?: string;
+  id?: string;
+}
+const { instructions, title = 'Stack Frame Explorer' } = Astro.props;
+const payload = JSON.stringify({ instructions, title });
+---
+
+<div data-weapon-component="stack-visualizer" data-weapon-props={payload}></div>

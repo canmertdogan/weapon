@@ -1,0 +1,85 @@
+{
+  "id": "lab-14",
+  "title": "Persistence Detection",
+  "module": "malware",
+  "lesson": "m2",
+  "description": "Identify persistence mechanisms from strings and imports.",
+  "difficulty": "Easy",
+  "estimatedTime": 15,
+  "prerequisites": [
+    "m2-persistence",
+    "sa1-strings-metadata",
+    "sa2-imports-exports",
+    "Windows persistence mechanisms (Run, Services, Scheduled Tasks, WMI, etc.)",
+    "MITRE ATT&CK: T1547"
+  ],
+  "binary": {
+    "format": "raw",
+    "name": "persist.bin",
+    "file": "/binaries/lab-14.hex",
+    "bytes": 256
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "type": "string",
+      "prompt": "What registry path indicates persistence?",
+      "answer": "software\\microsoft\\windows\\currentversion\\run"
+    },
+    {
+      "id": "q2",
+      "type": "string",
+      "prompt": "What filename does the malware likely masquerade as?",
+      "answer": "svchost.exe"
+    },
+    {
+      "id": "q3",
+      "type": "string",
+      "prompt": "Which two APIs write persistence? (comma-separated, alphabetical)",
+      "answer": "createservicew,regsetvalueexw"
+    },
+    {
+      "id": "q4",
+      "type": "string",
+      "prompt": "Which persistence category uses CreateServiceW? (one word)",
+      "answer": "services"
+    }
+  ],
+  "hints": [
+    "The Run key is the classic registry autostart location.",
+    "Masquerading as svchost.exe is a common evasion.",
+    "RegSetValueEx writes a Run value; CreateServiceW installs a service."
+  ],
+  "methodology": "## Investigation Methodology\n\n### 1. Persistence Taxonomy (MITRE ATT&CK T1547)\n| Sub-technique | Registry/Location | Key APIs |\n|---------------|-------------------|----------|\n| **Boot/Logon Autostart** | | |\n| Registry Run Keys | HKCU/HKLM\\...\\Run, RunOnce | RegCreateKeyEx, RegSetValueEx |\n| Winlogon | HKLM\\...\\Winlogon (Userinit, Shell) | RegSetValueEx |\n| Scheduled Tasks | Task Scheduler | ITaskScheduler, ITaskFolder |\n| Services | HKLM\\SYSTEM\\CurrentControlSet\\Services | CreateService, ChangeServiceConfig |\n| Startup Folder | %APPDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup | CopyFile, SHGetFolderPath |\n| WMI Event Subscription | WMI Repository | IWbemServices, CreateInstance |\n| Browser Helper Objects | HKLM\\...\\Explorer\\Browser Helper Objects | RegSetValueEx |\n| AppInit_DLLs | HKLM\\...\\Windows (AppInit_DLLs) | RegSetValueEx |\n\n### 2. Static Indicators\n**Strings**:\n- `Run`, `RunOnce`, `RunServices`, `RunServicesOnce`\n- `Services`, `CurrentControlSet\\Services`\n- `Startup`, `Start Menu`, `Programs`\n- `Task`, `Scheduler`, `Schedule`\n- `WMI`, `EventFilter`, `Consumer`\n\n**Imports**:\n- Registry: `RegCreateKeyEx`, `RegSetValueEx`, `RegOpenKeyEx`\n- Services: `CreateService`, `OpenService`, `ChangeServiceConfig`, `StartService`\n- Tasks: `ITaskScheduler`, `ITaskFolder`, `RegisterTask`\n- Files: `CopyFile`, `MoveFile`, `SHGetFolderPath`, `SHGetKnownFolderPath`\n- WMI: `IWbemServices`, `IWbemLocator`, `ConnectServer`\n\n### 3. Masquerading Patterns\n| Technique | Example |\n|-----------|---------|\n| System binary name | `svchost.exe`, `lsass.exe`, `csrss.exe`, `winlogon.exe` |\n| System directory | `%SYSTEM32%\\`, `%WINDIR%\\` |\n| Legitimate publisher | Microsoft Corporation (fake cert) |\n| Similar name | `svch0st.exe`, `lsasss.exe`, `update.exe` |\n\n### 4. Correlation\n- String `Run` + Import `RegSetValueEx` → **Run Key**\n- String `Services` + Import `CreateService` → **Service**\n- String `Startup` + Import `CopyFile` + Path `%APPDATA%` → **Startup Folder**\n- Import `CreateService` + String `svchost.exe` → **Service masquerading as system**\n\n### 5. Detection & Removal\n- **Run Keys**: `reg delete` / `autoruns`\n- **Services**: `sc delete` / `services.msc`\n- **Tasks**: `schtasks /delete` / Task Scheduler\n- **WMI**: `wmic` / PowerShell `Remove-WmiObject`\n- **Files**: Delete + hash for blocklist",
+  "commonPitfalls": [
+    "Missing HKCU vs HKLM — both used, HKCU = user-level, HKLM = system",
+    "Overlooking `RunOnce` — runs once, then deletes itself (stealthier)",
+    "Confusing `CreateService` (installs) with `StartService` (runs)",
+    "Not checking `ImagePath` in service — often points to dropped file",
+    "Missing `AppInit_DLLs` — loads DLL into every process with User32"
+  ],
+  "tools": [
+    "Autoruns (Sysinternals) — comprehensive persistence view",
+    "RegEdit / PowerShell (registry)",
+    "Procmon (dynamic — filter RegSetValue, CreateFile)",
+    "Ghidra (strings + imports)",
+    "KAPE / Velociraptor (collection)",
+    "YARA rules for persistence patterns"
+  ],
+  "references": [
+    "Lesson M2: Persistence",
+    "Lesson SA1: Strings & Metadata",
+    "Lesson SA2: Imports & Exports",
+    "MITRE ATT&CK: T1547 (Boot/Logon Autostart)",
+    "Microsoft: Run and RunOnce Registry Keys",
+    "Autoruns Documentation"
+  ],
+  "extensions": [
+    "Write a YARA rule detecting Run key + masquerade string (e.g., svchost.exe)",
+    "Analyze a sample with Scheduled Task persistence — find the XML",
+    "Research: WMI Event Subscription persistence — how to detect statically?",
+    "Build a persistence enumeration script for incident response",
+    "Test: Create a service with `sc create`, observe registry artifacts"
+  ],
+  "solution": "## Persistence Detection — Solution\n\n1. **Registry path**: `Software\\Microsoft\\Windows\\CurrentVersion\\Run` — the Run key.\n2. **Masquerade**: `svchost.exe` — the malware names itself after a legitimate system process.\n3. **APIs**: `RegSetValueExW` (Run-key value) and `CreateServiceW` (a service).\n4. `CreateServiceW` = **services** persistence (runs at boot).\n\n**Conclusion**: the sample persists two ways — a Run key and a service — and hides as `svchost.exe`."
+}

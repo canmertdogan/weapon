@@ -1,0 +1,12 @@
+---
+interface Props {
+  code: { address: number; op: string; args: string[] }[];
+  labels?: Record<string, number>;
+  title?: string;
+  id?: string;
+}
+const { code, labels = {}, title = 'Debugger Simulator' } = Astro.props;
+const payload = JSON.stringify({ code, labels, title });
+---
+
+<div data-weapon-component="debugger-simulator" data-weapon-props={payload}></div>

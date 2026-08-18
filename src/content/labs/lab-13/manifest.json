@@ -1,0 +1,83 @@
+{
+  "id": "lab-13",
+  "title": "Suspicious API Chains",
+  "module": "windows",
+  "lesson": "w5",
+  "description": "Read a binary's API imports as a capability narrative and determine its likely behavior.",
+  "difficulty": "Medium",
+  "estimatedTime": 15,
+  "prerequisites": [
+    "w5-winapi-native",
+    "sa2-imports-exports",
+    "WinINet API (InternetOpen, InternetConnect, HttpOpenRequest, HttpSendRequest)",
+    "Registry API (RegCreateKeyEx, RegSetValueEx)",
+    "File API (GetTempPath, CreateFile, WriteFile)"
+  ],
+  "binary": {
+    "format": "PE",
+    "name": "beacon.exe",
+    "file": "/binaries/lab-13.hex",
+    "bytes": 512
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "type": "string",
+      "prompt": "Which three APIs form the HTTP request chain? (comma-separated)",
+      "answer": "internetopenw,internetconnectw,httpsendrequestw"
+    },
+    {
+      "id": "q2",
+      "type": "string",
+      "prompt": "Which two APIs write a value to the registry for persistence? (comma-separated)",
+      "answer": "regcreatekeyexw,regsetvalueexw"
+    },
+    {
+      "id": "q3",
+      "type": "string",
+      "prompt": "What does the binary likely do based on this API narrative? (two words)",
+      "answer": "c2 beacon"
+    },
+    {
+      "id": "q4",
+      "type": "string",
+      "prompt": "GetTempPathW suggests the binary will do what? (one word)",
+      "answer": "drop"
+    }
+  ],
+  "hints": [
+    "InternetOpenW + InternetConnectW + HttpSendRequestW = an HTTP client.",
+    "RegCreateKeyExW + RegSetValueExW = write a startup entry.",
+    "Network + persistence + a temp path = a classic implant profile."
+  ],
+  "methodology": "## Investigation Methodology\n\n### 1. Group Imports by Capability\nMap each DLL to functional category:\n\n| Category | DLL | Key APIs |\n|----------|-----|----------|\n| **Network (WinINet)** | WININET.dll | InternetOpen, InternetConnect, HttpOpenRequest, HttpSendRequest, InternetReadFile |\n| **Network (WinHTTP)** | WINHTTP.dll | WinHttpOpen, WinHttpConnect, WinHttpOpenRequest, WinHttpSendRequest |\n| **Network (Winsock)** | WS2_32.dll | WSASocket, connect, send, recv, WSAConnect |\n| **Registry** | ADVAPI32.dll | RegCreateKeyEx, RegSetValueEx, RegOpenKeyEx, RegDeleteValue |\n| **Filesystem** | KERNEL32.dll | CreateFile, WriteFile, ReadFile, GetTempPath, CopyFile, MoveFile |\n| **Process** | KERNEL32.dll | CreateProcess, OpenProcess, CreateThread, CreateRemoteThread |\n| **Memory** | KERNEL32.dll | VirtualAlloc, VirtualAllocEx, VirtualProtect, VirtualProtectEx |\n| **Crypto** | ADVAPI32.dll / CRYPT32.dll | CryptAcquireContext, CryptEncrypt, CryptDecrypt, CryptHashData |\n\n### 2. Read as Narrative (Verbs + Objects)\nDon't just list APIs — read the *sequence*:\n```\nInternetOpenW()       → \"I am an HTTP client\"\nInternetConnectW()    → \"I connect to a server\"\nHttpSendRequestW()    → \"I send data / request\"\n```\n\n### 3. Identify Chains\n| Chain | Capability |\n|-------|------------|\n| Open → Connect → Request → Read/Write | HTTP C2 |\n| OpenKey → CreateKey → SetValue | Registry persistence |\n| GetTempPath → CreateFile → WriteFile | File dropper |\n| OpenProcess → VirtualAllocEx → WriteProcessMemory → CreateRemoteThread | Process injection |\n| LoadLibrary → GetProcAddress → Call | Dynamic resolution |\n\n### 4. Cross-Reference with Strings\n- C2 URLs → match to `InternetConnectW` host argument\n- Registry paths → match to `RegCreateKeyEx` key argument\n- File paths → match to `CreateFile` path argument\n\n### 5. Score Confidence\n- **Single API**: Low (e.g., `VirtualAlloc` = legitimate heap use)\n- **Chain (2-3)**: Medium\n- **Full chain + strings + matching behavior**: High\n\n### 6. Build Behavioral Profile\n```\nProfile: C2 Beacon / Implant\nNetwork:     WinINet HTTP (GET/POST to c2.domain)\nPersistence: Run Key (HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run)\nDrop:        %TEMP%\\payload.exe\nInjection:   None (but has OpenProcess + VirtualAllocEx = capability)\n```",
+  "commonPitfalls": [
+    "Listing APIs without grouping into chains",
+    "Missing that `HttpOpenRequest` is between `InternetConnect` and `HttpSendRequest`",
+    "Confusing WinINet (high-level) with Winsock (low-level) — different detection",
+    "Overlooking `GetTempPath` → it's a strong dropper indicator",
+    "Not cross-referencing with strings (URLs, paths, keys)"
+  ],
+  "tools": [
+    "Ghidra (Imports, Decompiler for call sequences)",
+    "PE-bear / CFF Explorer (Import Table)",
+    "API Monitor (dynamic)",
+    "Procmon (File/Reg/Network activity)",
+    "CAPA (Mandiant) — auto capability detection"
+  ],
+  "references": [
+    "Lesson W5: WinAPI & Native",
+    "Lesson SA2: Imports & Exports",
+    "Microsoft Docs: WinINet API Reference",
+    "MITRE ATT&CK: API-to-Technique mapping",
+    "CAPA Rules (GitHub)"
+  ],
+  "extensions": [
+    "Write a Ghidra script to auto-detect API chains in a binary",
+    "Build a CAPA rule for a custom capability",
+    "Analyze a sample with both WinINet and Winsock — why both?",
+    "Research: How to detect API hashing (no static imports)?",
+    "Create a behavioral profile template for your team"
+  ],
+  "solution": "## Suspicious API Chains — Solution\n\nReading the imports as a narrative:\n\n1. **InternetOpenW → InternetConnectW → HttpSendRequestW** = make an HTTP request (C2 channel).\n2. **RegCreateKeyExW → RegSetValueExW** = write a Run-key for persistence.\n3. **GetTempPathW** = resolve a temp directory to drop a file.\n\nTogether: a program that **phones home (C2 beacon)**, **persists via the registry**, and **drops a payload** to temp. That is the standard implant profile.\n\n**Methodology**: APIs are a language. Read them as verbs and objects, in sequence, to reconstruct intent."
+}

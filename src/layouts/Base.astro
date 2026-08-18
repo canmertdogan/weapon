@@ -1,0 +1,81 @@
+---
+import '@fontsource-variable/jetbrains-mono';
+import '@fontsource-variable/ibm-plex-sans';
+import '@fontsource/chakra-petch/500.css';
+import '@fontsource/chakra-petch/600.css';
+import '@fontsource/chakra-petch/700.css';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+const { title, description = "WEAPON — Reverse Engineering Startup Course" } = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title} | WEAPON</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+  </head>
+  <body class="min-h-screen flex flex-col">
+    <slot name="header" />
+    <main class="flex-1 w-full max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-8">
+      <slot />
+    </main>
+    <slot name="footer" />
+  </body>
+</html>
+
+<script>
+  import { updateRankBadge } from '../scripts/progress';
+  import { updateProgressUI, updateDashboardUI } from '../scripts/progress-ui';
+  import { mountInteractives } from '../components/interactive/mount';
+  import { initCommandPalette } from '../components/CommandPalette';
+
+  updateRankBadge();
+  mountInteractives();
+  updateProgressUI();
+  updateDashboardUI();
+  window.addEventListener('weapon:progress', updateDashboardUI);
+
+  // Register service worker for offline support
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').then((reg) => {
+        console.log('Service Worker registered:', reg.scope);
+      }).catch((err) => {
+        console.warn('Service Worker registration failed:', err);
+      });
+    });
+  }
+
+  // Initialize command palette when data is available
+  function tryInitPalette() {
+    const lessonsEl = document.getElementById('lessons-data');
+    if (lessonsEl) {
+      try {
+        const lessons = JSON.parse(lessonsEl.textContent || '[]');
+        const modules: any[] = [];
+        const labs: any[] = [];
+        initCommandPalette(modules, labs);
+      } catch (e) {
+        console.warn('Failed to init command palette', e);
+      }
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tryInitPalette);
+  } else {
+    tryInitPalette();
+  }
+</script>

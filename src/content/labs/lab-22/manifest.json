@@ -1,0 +1,82 @@
+{
+  "id": "lab-22",
+  "title": "Manual Unpacking Challenge",
+  "module": "anti-re",
+  "lesson": "ar1",
+  "description": "Go past packer identification: reason about what the compressed payload region implies, and what it takes to actually recover the unpacked code.",
+  "difficulty": "Hard",
+  "estimatedTime": 30,
+  "prerequisites": [
+    "ar1-packers-and-unpacking",
+    "m4-obfuscation-packing",
+    "w1-pe-deep-dive",
+    "PE structure (SizeOfImage, sections, entry point)",
+    "x64dbg + Scylla dump workflow",
+    "Hardware breakpoints (DR0-DR3)"
+  ],
+  "binary": {
+    "format": "PE",
+    "name": "packed.exe",
+    "hex": "4D5A000000000000000000000000000000000000000000000000000000000000555058210000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000504500006486020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000555058300000000000000000000000000000000000020000000000000000000000000000800000E0555058310000000000000000000000000001000000020000000000000000000000000000400000E0000000000000000000000000000000000000000000000000000000000000000000000000000000000726456483A2C1E0FF1E3D5C7B9AB9D8F71635547392B1D0EF0E2D4C6B8AA9C8E70625446382A1C0DFFE1D3C5B7A99B8D7F61534537291B0CFEE0D2C4B6A89A8C7E60524436281A0BFDEFD1C3B5A7998B7D6F51433527190AFCEED0C2B4A6988A7C6E504234261809FBEDDFC1B3A597897B6D5F4133251708FAECDEC0B2A496887A6C5E4032241607F9EBDDCFB1A39587796B5D4F31231506F8EADCCEB0A29486786A5C4E30221405F7E9DBCDBFA1938577695B4D3F211304F6E8DACCBEA0928476685A4C3E201203F5E7D9CBBDAF91837567594B3D2F1102F4E6D8CABCAE90827466584A3C2E1001F3E5D7C9BBAD9F81736557493B2D1F00F2E4D6C8BAAC9E8",
+    "bytes": 512
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "type": "number",
+      "prompt": "The compressed payload region runs from 0x200 to 0x300. How many bytes is that, in decimal?",
+      "answer": "256"
+    },
+    {
+      "id": "q2",
+      "type": "string",
+      "prompt": "A packed file's on-disk size is much smaller than the memory footprint it needs once unpacked. Which Optional Header field states that total virtual footprint?",
+      "answer": "sizeofimage"
+    },
+    {
+      "id": "q3",
+      "type": "string",
+      "prompt": "Once UPX's decompression stub finishes and jumps to the real OEP, what one-word technique lets you capture the now-unpacked code straight out of process memory?",
+      "answer": "dump"
+    }
+  ],
+  "hints": [
+    "0x300 - 0x200 is the region's length, not either endpoint's value.",
+    "Look at the Optional Header field that tells the loader how many bytes of virtual address space to reserve — packers keep this large even though the file itself is small.",
+    "You don't need to decompress the payload by hand — you just need to catch it after the packer decompresses it for you, at the moment it hands off to OEP."
+  ],
+  "methodology": "## Investigation Methodology\n\n### 1. Static Confirmation of Packing\n| Signal | This Sample |\n|--------|-------------|\n| `UPX!` signature at 0x20 | Present |\n| Sections UPX0 (empty) / UPX1 (payload) | Present |\n| High entropy in UPX1 | Present (compressed data) |\n| SizeOfImage >> file size | Present |\n| Entry point in UPX1 (stub) | Present |\n\n### 2. UPX Section Layout\n```\nUPX0: Empty in file, R-X in memory (target for decompressed code)\nUPX1: Compressed payload in file, R-X in memory (decompression stub + data)\n```\n\n- UPX0 has `SizeOfRawData` = 0, but `VirtualSize` > 0\n- At runtime, UPX0 fills with decompressed code\n- **Decompression writes into UPX0** (from UPX1)\n\n### 3. Unpacking Workflow (Dynamic)\n```\n1. Load packed.exe in x64dbg\n2. Set hardware breakpoint on WRITE to UPX0 region\n   (or breakpoint at tail of stub — the jump to OEP)\n3. Run — decompression writes to UPX0\n4. Break when write to UPX0 occurs (stub is filling .text)\n5. Find the final jump to OEP (e.g., jmp [orig_entry])\n6. Break at OEP — code is fully decompressed\n7. Dump memory (Scylla / OllyDump / x64dbg)\n8. Fix imports (IAT is rebuilt — use Scylla)\n9. Analyze dumped binary — strings, imports now visible\n```\n\n### 4. Finding OEP\nCommon UPX stub patterns:\n```asm\n; ... decompression loop ...\npopad                    ; restore registers\njmp original_entry_point  ; jump to OEP\n```\nLook for:\n- `popad` / `popfd` then unconditional `jmp`\n- `jmp [address]` (indirect) = jump to OEP\n- `push OEP` / `ret` = jump via ret\n\n### 5. Dump Techniques\n| Tool | Method |\n|------|--------|\n| **Scylla** | x64dbg plugin, dump + IAT fix |\n| **OllyDump** | OllyDbg plugin |\n| **LordPE** | Process dump |\n| **Process Hacker** | Memory dump |\n| **procdump** | Sysinternals |\n| **gdb** (Linux) | `dump memory` |\n\n### 6. Import Reconstruction\n- IAT is rebuilt by the stub at runtime\n- After dump, imports point to correct addresses\n- **Scylla** scans for IAT, rebuilds import table\n- Alternative: use the packed binary's original imports (if not obfuscated)\n\n### 7. Post-Unpack Verification\n- Strings now visible (C2, registry keys, mutexes)\n- Imports full (network, injection, persistence APIs)\n- CFG reconstructable\n- Compare hash of unpacked vs packed",
+  "commonPitfalls": [
+    "Dumping too early (before full decompression) — incomplete code",
+    "Dumping too late (after stub cleans up) — missing imports",
+    "Not fixing imports — dumped binary won't run/analyze correctly",
+    "Missing the OEP — jumping to wrong address",
+    "Breaking on READ instead of WRITE to UPX0",
+    "Not setting breakpoint at correct point (before stub finishes)"
+  ],
+  "tools": [
+    "x64dbg + Scylla (dump + IAT fix)",
+    "OllyDbg + OllyDump",
+    "PE-bear / CFF Explorer (SizeOfImage, sections)",
+    "Detect It Easy (packer ID)",
+    "upx -d (for UPX only)",
+    "LordPE (dump)",
+    "Procmon (dynamic observation)"
+  ],
+  "references": [
+    "Lesson AR1: Packers & Unpacking",
+    "Lesson M4: Obfuscation & Packing",
+    "UPX Documentation (decompression stub analysis)",
+    "Scylla x64dbg plugin guide",
+    "Manual unpacking tutorials (x64dbg)"
+  ],
+  "extensions": [
+    "Unpack a real UPX sample with x64dbg + Scylla, compare to `upx -d` output",
+    "Analyze the UPX decompression stub — how does it work?",
+    "Research: How to unpack a modified UPX (corrupted headers)?",
+    "Build a Ghidra script to auto-detect UPX stub patterns",
+    "Practice: Unpack ASPack/Themida/VMProtect samples",
+    "Write a YARA rule for UPX stub + compressed payload signature"
+  ],
+  "solution": "## Manual Unpacking Challenge — Solution\n\n1. **256 bytes** (`0x300 - 0x200`) — the compressed payload region. On disk this stays small; UPX's whole premise is that a short decompression stub can inflate it back to full size at runtime.\n2. **SizeOfImage** — the Optional Header field the loader uses to reserve virtual address space for the *unpacked* image. A packed PE's `SizeOfImage` is typically far larger than its on-disk file size — a strong static signal that something gets decompressed after load, before you even look at section entropy.\n3. **Dump** (a memory/process dump) — set a breakpoint at the tail of the unpacking stub (right before it jumps to OEP), let it run until the payload is decompressed in memory, then dump that memory region to disk. The dumped image now has real, readable code and strings — the packer's obfuscation only ever protected the *file on disk*, never the process once it's actually running."
+}

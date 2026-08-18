@@ -1,0 +1,84 @@
+{
+  "id": "lab-11",
+  "title": "PE Header Forensics",
+  "module": "windows",
+  "lesson": "w1",
+  "description": "Inspect a PE header to find structural anomalies that indicate tampering or packing.",
+  "difficulty": "Medium",
+  "estimatedTime": 20,
+  "prerequisites": [
+    "w1-pe-deep-dive",
+    "f1-binary-anatomy",
+    "PE structure (DOS/NT headers, section table)",
+    "Section characteristics (RWX)",
+    "Mitigations: DEP, ASLR, CFG"
+  ],
+  "binary": {
+    "format": "PE",
+    "name": "anomaly.exe",
+    "file": "/binaries/lab-11.hex",
+    "bytes": 1024
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "type": "string",
+      "prompt": "How many sections does this PE have? (decimal)",
+      "answer": "2"
+    },
+    {
+      "id": "q2",
+      "type": "string",
+      "prompt": "The entry point RVA is 0x3000. Which section does that place it in?",
+      "answer": ".data"
+    },
+    {
+      "id": "q3",
+      "type": "string",
+      "prompt": "What permission combination does the .data section have that is suspicious?",
+      "answer": "rwx"
+    },
+    {
+      "id": "q4",
+      "type": "string",
+      "prompt": "An entry point in a writable+executable section defeats which security mitigation?",
+      "answer": "dep"
+    }
+  ],
+  "hints": [
+    "The section table starts after the optional header; count the entries.",
+    "Entry point 0x3000 lands in the section with VirtualAddress 0x3000.",
+    "Writable + executable = the classic RWX red flag.",
+    "RWX defeats Data Execution Prevention."
+  ],
+  "methodology": "## Investigation Methodology\n\n### 1. Parse DOS Header\n- Offset 0x0: Verify `MZ` signature\n- Offset 0x3C: Read `e_lfanew` (little-endian) to NT Headers offset\n\n### 2. Parse NT Headers\n- Verify `PE` signature (P E 0 0)\n- COFF File Header: Read `NumberOfSections`\n- Optional Header: Read `AddressOfEntryPoint` (RVA)\n- Optional Header: Read `DllCharacteristics` for mitigations\n\n### 3. Parse Section Table\nFor each section (IMAGE_SECTION_HEADER, 40 bytes):\n- Name (8 bytes)\n- VirtualAddress (RVA)\n- VirtualSize\n- SizeOfRawData\n- PointerToRawData\n- **Characteristics** (permissions)\n\n### 4. Map Entry Point to Section\nFor each section, check if EntryPointRVA >= VirtualAddress AND EntryPointRVA < VirtualAddress + VirtualSize. If so, the entry point lies in that section.\n\n### 5. Analyze Section Permissions\nDecode Characteristics flags:\n- 0x20000000 = EXECUTE\n- 0x40000000 = READ\n- 0x80000000 = WRITE\n\n**Normal**: `.text`=R-X, `.rdata`=R, `.data`=RW. **Suspicious**: Any RWX (0xE0000000), `.text` writable, `.data` executable.\n\n### 6. Check Mitigations\n- `DllCharacteristics & 0x40` = DYNAMIC_BASE (ASLR)\n- `DllCharacteristics & 0x100` = NX_COMPAT (DEP)\n- `DllCharacteristics & 0x4000` = GUARD_CF (CFG)\n- DataDirectory[10] (LoadConfig) present? SafeSEH, CET, etc.\n\n### 7. Correlate Findings\n- Entry point in `.data` + RWX = **Packed/Injected**\n- Missing relocations + ASLR enabled = **Broken ASLR**\n- No imports + high entropy = **Packed**\n- TLS callbacks = **Pre-entry code**",
+  "commonPitfalls": [
+    "Confusing RVA (relative virtual address) with file offset",
+    "Missing that `VirtualSize` may be larger than `SizeOfRawData` (for .bss)",
+    "Not checking all sections for RWX — check every one",
+    "Forgetting that entry point is RVA, not VA (add ImageBase for VA)",
+    "Misreading Characteristics flags (endianness, bit positions)"
+  ],
+  "tools": [
+    "CFF Explorer / PE-bear (GUI)",
+    "dumpbin /headers (CLI)",
+    "pefile (Python)",
+    "Ghidra (Memory Map, Sections)",
+    "Binary Ninja (Sections view)",
+    "Built-in Hex Viewer"
+  ],
+  "references": [
+    "Lesson W1: PE Format Deep Dive",
+    "Lesson F1: Binary Anatomy",
+    "Microsoft PE/COFF Specification",
+    "DEP/NX Technology Overview",
+    "ASLR Implementation"
+  ],
+  "extensions": [
+    "Scan a directory of samples for RWX sections + entry point mismatch",
+    "Write a YARA rule detecting `DllCharacteristics & 0x100` (DEP) but RWX section",
+    "Research: How does Windows handle RWX sections with DEP enabled?",
+    "Analyze a UPX-packed sample: find OEP, dump unpacked, compare headers"
+  ],
+  "solution": "## PE Header Forensics — Solution\n\n1. The COFF header reports **2 sections** (`.text` at 0x1000, `.data` at 0x3000).\n2. Entry point RVA **0x3000** falls inside `.data` — code is expected in `.text`, not `.data`.\n3. `.data` has characteristics `0xE0000040` = readable + **writable + executable (RWX)**.\n4. A writable+executable region defeats **DEP** — the code is meant to be written (or unpacked) and then run.\n\n**Conclusion**: entry point in `.data` + RWX is a strong packing/injection indicator."
+}
