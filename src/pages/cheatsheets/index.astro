@@ -6,10 +6,17 @@ import Footer from '../../components/layout/Footer.astro';
 const sections = [
   { id: 'registers', label: 'x86-64 Registers & Calling Conventions' },
   { id: 'instructions', label: 'Common x86-64 Instructions' },
+  { id: 'stack-frame', label: 'x86-64 Stack Frame Layout' },
+  { id: 'arm64', label: 'ARM64 (AArch64) Quick Reference' },
   { id: 'pe-format', label: 'PE Format Quick Reference' },
   { id: 'elf-format', label: 'ELF Format Quick Reference' },
+  { id: 'file-signatures', label: 'Common File Signatures' },
   { id: 'debuggers', label: 'Debugger Command Reference' },
   { id: 'winapi', label: 'WinAPI Capability Clusters' },
+  { id: 'anti-debug', label: 'Anti-Debugging Techniques' },
+  { id: 'packers', label: 'Packer Signatures' },
+  { id: 'persistence', label: 'Persistence Locations' },
+  { id: 'ascii', label: 'ASCII Quick Reference' },
 ];
 ---
 
@@ -97,6 +104,64 @@ const sections = [
       </table>
     </section>
 
+    <section id="stack-frame" aria-labelledby="stack-frame-heading" class="pb-4">
+      <h2 id="stack-frame-heading">x86-64 Stack Frame Layout</h2>
+      <p>The stack grows <em>downward</em> (toward lower addresses). A standard prologue —</p>
+      <pre><code>push rbp
+mov  rbp, rsp
+sub  rsp, 0x20   ; reserve space for locals</code></pre>
+      <p>— produces this layout, read relative to <code>RBP</code>:</p>
+      <table>
+        <thead><tr><th>Address</th><th>Contents</th></tr></thead>
+        <tbody>
+          <tr><td><code>[rbp+16]</code>, <code>[rbp+24]</code>...</td><td>Stack-passed arguments (5th+ on Windows, 7th+ on System V)</td></tr>
+          <tr><td><code>[rbp+8]</code></td><td>Return address (pushed by <code>call</code>)</td></tr>
+          <tr><td><code>[rbp+0]</code></td><td>Saved caller <code>RBP</code> (pushed by the prologue)</td></tr>
+          <tr><td><code>[rbp-8]</code> … <code>[rbp-N]</code></td><td>Local variables</td></tr>
+          <tr><td><code>RSP</code></td><td>Points at the current top of the stack, below the locals</td></tr>
+        </tbody>
+      </table>
+      <p>
+        A classic stack-smash overflows a local buffer far enough to overwrite the saved <code>RBP</code> and then the return address — the exact byte count from the start of the buffer to <code>[rbp+8]</code> is what lab-19 asks you to compute. The matching epilogue, <code>leave; ret</code> (or <code>mov rsp, rbp; pop rbp; ret</code>), reverses the prologue and jumps to whatever address now sits at the top of the stack.
+      </p>
+    </section>
+
+    <section id="arm64" aria-labelledby="arm64-heading" class="pb-4">
+      <h2 id="arm64-heading">ARM64 (AArch64) Quick Reference</h2>
+      <table>
+        <thead><tr><th>Register</th><th>Common use</th><th>AAPCS64 calling convention</th></tr></thead>
+        <tbody>
+          <tr><td><code>X0–X7</code></td><td>General purpose (<code>W0–W7</code> = low 32 bits)</td><td>Argument / return value registers</td></tr>
+          <tr><td><code>X8</code></td><td>Indirect result register</td><td>Used for large struct returns</td></tr>
+          <tr><td><code>X9–X15</code></td><td>General purpose</td><td>Caller-saved (temporary)</td></tr>
+          <tr><td><code>X16–X17</code></td><td>Intra-procedure-call temp (<code>IP0</code>/<code>IP1</code>)</td><td>Caller-saved, used by the linker for veneers</td></tr>
+          <tr><td><code>X18</code></td><td>Platform register</td><td>Reserved on some platforms — don't assume it's free</td></tr>
+          <tr><td><code>X19–X28</code></td><td>General purpose</td><td>Callee-saved</td></tr>
+          <tr><td><code>X29</code></td><td>Frame pointer (<code>FP</code>)</td><td>Callee-saved</td></tr>
+          <tr><td><code>X30</code></td><td>Link register (<code>LR</code>) — holds the return address</td><td>Callee-saved</td></tr>
+          <tr><td><code>SP</code></td><td>Stack pointer</td><td>Must stay 16-byte aligned</td></tr>
+          <tr><td><code>XZR</code> / <code>WZR</code></td><td>Hardwired zero register</td><td>Reading always gives 0; writes are discarded</td></tr>
+        </tbody>
+      </table>
+      <p>
+        Unlike x86, ARM is a load-store architecture — arithmetic instructions only operate on registers, never directly on memory. There's also no dedicated <code>call</code> instruction with an implicit stack push: <code>BL</code> puts the return address straight into <code>X30</code>, and a leaf function that never calls anything else doesn't need to touch the stack at all.
+      </p>
+      <table>
+        <thead><tr><th>Instruction</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><code>mov  Xd, Xn</code></td><td>Copy register / move immediate</td></tr>
+          <tr><td><code>ldr Xd, [Xn]</code></td><td>Load from memory into a register</td></tr>
+          <tr><td><code>str Xd, [Xn]</code></td><td>Store a register to memory</td></tr>
+          <tr><td><code>add</code> / <code>sub</code></td><td>Add / subtract</td></tr>
+          <tr><td><code>cmp Xn, Xm</code></td><td>Compare (subtract and set flags, discard result)</td></tr>
+          <tr><td><code>b &lt;label&gt;</code></td><td>Unconditional branch</td></tr>
+          <tr><td><code>b.eq</code> / <code>b.ne</code> / <code>b.gt</code> / <code>b.lt</code></td><td>Conditional branch on the flags <code>cmp</code> just set</td></tr>
+          <tr><td><code>bl &lt;label&gt;</code></td><td>Branch with link — call: <code>X30</code> ← return address, then jump</td></tr>
+          <tr><td><code>ret</code></td><td>Return via the address in <code>X30</code> (or an explicit register: <code>ret Xn</code>)</td></tr>
+        </tbody>
+      </table>
+    </section>
+
     <section id="pe-format" aria-labelledby="pe-format-heading" class="pb-4">
       <h2 id="pe-format-heading">PE Format Quick Reference</h2>
       <table>
@@ -157,6 +222,28 @@ const sections = [
       <p><strong><code>p_flags</code>:</strong> <code>1</code>=PF_X (execute) · <code>2</code>=PF_W (write) · <code>4</code>=PF_R (read) — combined by OR, e.g. <code>5</code> = R+X.</p>
     </section>
 
+    <section id="file-signatures" aria-labelledby="file-signatures-heading" class="pb-4">
+      <h2 id="file-signatures-heading">Common File Signatures</h2>
+      <p>The first bytes of a file ("magic bytes") identify its format regardless of extension — the first thing to check on an unknown sample.</p>
+      <table>
+        <thead><tr><th>Bytes (hex)</th><th>ASCII</th><th>Format</th></tr></thead>
+        <tbody>
+          <tr><td><code>4D 5A</code></td><td><code>MZ</code></td><td>DOS/PE executable (.exe, .dll, .sys)</td></tr>
+          <tr><td><code>7F 45 4C 46</code></td><td><code>.ELF</code></td><td>ELF (Linux executable/library)</td></tr>
+          <tr><td><code>FE ED FA CE</code> / <code>CF</code></td><td>—</td><td>Mach-O 32-bit / 64-bit (macOS executable)</td></tr>
+          <tr><td><code>CA FE BA BE</code></td><td>—</td><td>Mach-O Fat/Universal binary — also the Java <code>.class</code> file magic number</td></tr>
+          <tr><td><code>50 4B 03 04</code></td><td><code>PK..</code></td><td>ZIP — also the container for JAR, APK, and Office Open XML (.docx/.xlsx/.pptx)</td></tr>
+          <tr><td><code>25 50 44 46</code></td><td><code>%PDF</code></td><td>PDF</td></tr>
+          <tr><td><code>89 50 4E 47 0D 0A 1A 0A</code></td><td><code>.PNG....</code></td><td>PNG</td></tr>
+          <tr><td><code>FF D8 FF</code></td><td>—</td><td>JPEG</td></tr>
+          <tr><td><code>47 49 46 38</code></td><td><code>GIF8</code></td><td>GIF</td></tr>
+          <tr><td><code>1F 8B</code></td><td>—</td><td>GZIP</td></tr>
+          <tr><td><code>52 61 72 21 1A 07</code></td><td><code>Rar!..</code></td><td>RAR archive</td></tr>
+          <tr><td><code>37 7A BC AF 27 1C</code></td><td>—</td><td>7-Zip archive</td></tr>
+        </tbody>
+      </table>
+    </section>
+
     <section id="debuggers" aria-labelledby="debuggers-heading" class="pb-4">
       <h2 id="debuggers-heading">Debugger Command Reference</h2>
       <table>
@@ -192,6 +279,76 @@ const sections = [
           <tr><td>DLL search-order hijack targets</td><td>small app-local DLLs commonly missing from KnownDLLs: <code>version.dll</code>, <code>dwmapi.dll</code>, <code>uxtheme.dll</code></td></tr>
         </tbody>
       </table>
+    </section>
+
+    <section id="anti-debug" aria-labelledby="anti-debug-heading" class="pb-4">
+      <h2 id="anti-debug-heading">Anti-Debugging Techniques</h2>
+      <p>How a sample checks whether it's being watched — and the static/dynamic tell for each check, per lab-10.</p>
+      <table>
+        <thead><tr><th>Technique</th><th>How it works</th></tr></thead>
+        <tbody>
+          <tr><td><code>IsDebuggerPresent()</code></td><td>Reads the <code>BeingDebugged</code> flag in the PEB — the cheapest, most-checked-for anti-debug call</td></tr>
+          <tr><td><code>CheckRemoteDebuggerPresent()</code></td><td>Same check, but works even if the debugger attached to a <em>different</em> process is asked about this one</td></tr>
+          <tr><td><code>NtQueryInformationProcess</code></td><td><code>ProcessDebugPort</code>/<code>ProcessDebugFlags</code>/<code>ProcessDebugObjectHandle</code> — lower-level equivalents that don't show up as an obvious "debugger" import</td></tr>
+          <tr><td>PEB <code>NtGlobalFlag</code></td><td>Debuggers set specific heap-allocation flags; a sample can read the flag directly from the PEB without calling any API at all</td></tr>
+          <tr><td>Timing checks</td><td><code>RDTSC</code> or <code>GetTickCount</code> before/after a block of code — single-stepping through a debugger is orders of magnitude slower than normal execution</td></tr>
+          <tr><td><code>INT3</code> scanning</td><td>Checksums its own code section looking for the <code>0xCC</code> bytes a software breakpoint writes in place of the original instruction</td></tr>
+          <tr><td>Hardware breakpoint detection</td><td><code>GetThreadContext</code> and inspect <code>DR0–DR3</code> — sees hardware breakpoints that never touch the code bytes themselves</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="packers" aria-labelledby="packers-heading" class="pb-4">
+      <h2 id="packers-heading">Packer Signatures</h2>
+      <p>Static tells that identify which packer compressed/obfuscated a binary — the first move on any sample flagged by high section entropy, per lab-16.</p>
+      <table>
+        <thead><tr><th>Packer</th><th>Signature / section names</th></tr></thead>
+        <tbody>
+          <tr><td>UPX</td><td><code>UPX!</code> signature; sections <code>UPX0</code>, <code>UPX1</code> — most common, open-source, trivially reversible with <code>upx -d</code></td></tr>
+          <tr><td>ASPack</td><td><code>ASPack</code> string; sections <code>.aspack</code>, <code>.adata</code></td></tr>
+          <tr><td>Themida</td><td>sections <code>.themida</code>, <code>.tmd</code> — heavy anti-debug/anti-VM, not a quick unpack</td></tr>
+          <tr><td>VMProtect</td><td>sections <code>.vmp0</code>, <code>.vmp1</code> — virtualizes code into a custom bytecode, not just compression</td></tr>
+          <tr><td>Enigma</td><td>sections <code>.enigma</code>, <code>.edata</code></td></tr>
+          <tr><td>PECompact</td><td><code>PEC2</code> signature; sections <code>.pec1</code>, <code>.pec2</code></td></tr>
+          <tr><td>MPRESS</td><td><code>MPRESS</code> section name — free, LZMA-based</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="persistence" aria-labelledby="persistence-heading" class="pb-4">
+      <h2 id="persistence-heading">Persistence Locations</h2>
+      <p>Where malware re-establishes itself after a reboot or logout — the standard checklist for triage and cleanup, per lab-14.</p>
+      <table>
+        <thead><tr><th>Mechanism</th><th>Location</th></tr></thead>
+        <tbody>
+          <tr><td>Registry Run key</td><td><code>HKCU\Software\Microsoft\Windows\CurrentVersion\Run</code> (also <code>HKLM</code> for machine-wide, and <code>RunOnce</code> for a single-shot variant)</td></tr>
+          <tr><td>Services</td><td><code>HKLM\SYSTEM\CurrentControlSet\Services</code> — installed via <code>CreateServiceW</code></td></tr>
+          <tr><td>Winlogon</td><td><code>HKLM\...\Winlogon</code> — <code>Shell</code>/<code>Userinit</code> values run at every logon</td></tr>
+          <tr><td>Startup folder</td><td><code>%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup</code> — anything dropped here runs at next logon, no registry needed</td></tr>
+          <tr><td>Scheduled Tasks</td><td>Task Scheduler (<code>schtasks</code> / <code>ITaskScheduler</code>) — can trigger on a schedule, on logon, or on idle</td></tr>
+          <tr><td>AppInit_DLLs</td><td><code>HKLM\...\Windows</code> <code>AppInit_DLLs</code> value — loads a DLL into every process that also loads <code>User32.dll</code></td></tr>
+          <tr><td>WMI Event Subscription</td><td>WMI repository — fileless, survives without a corresponding file on disk</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="ascii" aria-labelledby="ascii-heading" class="pb-4">
+      <h2 id="ascii-heading">ASCII Quick Reference</h2>
+      <p>Ranges worth recognizing on sight in a hex viewer's ASCII column, without memorizing all 128 codepoints.</p>
+      <table>
+        <thead><tr><th>Range (hex)</th><th>Characters</th></tr></thead>
+        <tbody>
+          <tr><td><code>0x30–0x39</code></td><td><code>0</code>–<code>9</code></td></tr>
+          <tr><td><code>0x41–0x5A</code></td><td><code>A</code>–<code>Z</code></td></tr>
+          <tr><td><code>0x61–0x7A</code></td><td><code>a</code>–<code>z</code></td></tr>
+          <tr><td><code>0x20</code></td><td>Space</td></tr>
+          <tr><td><code>0x00</code></td><td>NUL — C-string terminator</td></tr>
+          <tr><td><code>0x09</code></td><td>Tab</td></tr>
+          <tr><td><code>0x0A</code> / <code>0x0D</code></td><td>LF / CR — Unix vs. Windows line endings (<code>\r\n</code> together = Windows)</td></tr>
+          <tr><td><code>0x7F</code></td><td>DEL — outside the normal printable range, often shows as a stray byte between printable strings</td></tr>
+        </tbody>
+      </table>
+      <p>A run of alternating printable-byte / <code>0x00</code> bytes (e.g. <code>48 00 69 00</code> = "H.i.") is UTF-16LE — the wide-string encoding Windows APIs favor. Plain <code>strings</code> without <code>-el</code> misses these entirely.</p>
     </section>
   </div>
 

@@ -64,6 +64,7 @@
     font-size: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    scroll-padding-top: 5rem;
   }
 
   body {
