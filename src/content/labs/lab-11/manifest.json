@@ -17,7 +17,7 @@
     "format": "PE",
     "name": "anomaly.exe",
     "file": "/binaries/lab-11.hex",
-    "bytes": 1536
+    "bytes": 2048
   },
   "questions": [
     {
@@ -55,7 +55,7 @@
   "commonPitfalls": [
     "Confusing RVA (relative virtual address) with file offset",
     "Missing that `VirtualSize` may be larger than `SizeOfRawData` (for .bss)",
-    "Not checking all sections for RWX — check every one",
+    "Not checking all sections for RWX \u2014 check every one",
     "Forgetting that entry point is RVA, not VA (add ImageBase for VA)",
     "Misreading Characteristics flags (endianness, bit positions)"
   ],
@@ -80,5 +80,5 @@
     "Research: How does Windows handle RWX sections with DEP enabled?",
     "Analyze a UPX-packed sample: find OEP, dump unpacked, compare headers"
   ],
-  "solution": "## PE Header Forensics — Solution\n\n1. The COFF header reports **2 sections** (`.text` at 0x1000, `.data` at 0x3000).\n2. Entry point RVA **0x3000** falls inside `.data` — code is expected in `.text`, not `.data`.\n3. `.data` has characteristics `0xE0000040` = readable + **writable + executable (RWX)**.\n4. A writable+executable region defeats **DEP** — the code is meant to be written (or unpacked) and then run.\n\n**Conclusion**: entry point in `.data` + RWX is a strong packing/injection indicator."
+  "solution": "## PE Header Forensics \u2014 Solution\n\n1. The COFF header reports **2 sections** (`.text` at 0x1000, `.data` at 0x3000).\n2. Entry point RVA **0x3000** falls inside `.data` \u2014 code is expected in `.text`, not `.data`.\n3. `.data` has characteristics `0xE0000040` = readable + **writable + executable (RWX)**.\n4. A writable+executable region defeats **DEP** \u2014 the code is meant to be written (or unpacked) and then run.\n\n**Conclusion**: entry point in `.data` + RWX is a strong packing/injection indicator."
 }

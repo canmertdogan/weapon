@@ -17,7 +17,7 @@
     "format": "PE",
     "name": "packed.exe",
     "file": "/binaries/lab-16.hex",
-    "bytes": 1024
+    "bytes": 1536
   },
   "questions": [
     {
@@ -48,18 +48,18 @@
   "hints": [
     "The signature is 4 bytes near the start of the file.",
     "Packed sections are conventionally named UPX0 and UPX1.",
-    "The compressed payload is high-entropy — looks random."
+    "The compressed payload is high-entropy \u2014 looks random."
   ],
-  "methodology": "## Investigation Methodology\n\n### 1. Packer Indicators\n| Indicator | What It Means |\n|-----------|---------------|\n| **Few imports** (only LoadLibrary/GetProcAddress) | Manual import resolution |\n| **High entropy** (>7.5) in all sections | Encrypted/compressed |\n| **Entry point in last/weird section** | Packer stub |\n| **Non-standard section names** | Packer-specific (UPX0, .aspack, .themida, .vmp0) |\n| **Missing relocations** with ASLR | Packer strips them |\n| **TLS callbacks** present | Pre-entry unpacking |\n| **Signature in header** | `UPX!`, `ASPack`, `MEW`, etc. |\n\n### 2. Common Packer Signatures\n| Packer | Signature | Section Names | Notes |\n|--------|-----------|---------------|-------|\n| **UPX** | `UPX!` (0x20-0x23) | UPX0, UPX1 | Most common, open source |\n| **ASPack** | `ASPack` / `.aspack` | `.aspack`, `.adata` | Commercial |\n| **Themida** | `.themida`, `.tmd` | `.themida`, `.tmd` | Heavy anti-debug |\n| **VMProtect** | `.vmp0`, `.vmp1` | `.vmp0`, `.vmp1` | Virtualization-based |\n| **Enigma** | `.enigma` | `.enigma`, `.edata` | Virtualization |\n| **PECompact** | `PEC2` | `.pec1`, `.pec2` | Commercial |\n| **MPRESS** | `MPRESS` | `.mpress` | Free |\n| **Custom** | (none) | Random / none | Hardest |\n\n### 3. Entropy Analysis\n```python\nimport pefile, math\npe = pefile.PE('sample.exe')\nfor s in pe.sections:\n    data = s.get_data()\n    if len(data) == 0: continue\n    entropy = -sum((data.count(b)/len(data))*math.log2(data.count(b)/len(data)) for b in set(data))\n    print(f'{s.Name.decode().strip():10s} Entropy: {entropy:.2f}')\n```\n- Normal code: 6.0-7.2\n- Packed/encrypted: 7.5-8.0\n\n### 4. Identification Workflow\n1. Run `die` (Detect It Easy) or `pestudio` → auto-detect\n2. Check section names manually in PE-bear/CFF Explorer\n3. Scan for signatures at known offsets\n4. Check entropy per section\n5. Verify entry point location\n\n### 5. Unpacking Strategy\n| Packer | Method |\n|--------|--------|\n| **UPX** | `upx -d sample.exe` (trivial) |\n| **ASPack** | ESP tracing / manual dump |\n| **Themida/VMProtect** | Dynamic dump at OEP (hardware BP on write to .text) |\n| **Custom** | Dynamic analysis, memory dump, import reconstruction |\n\n### 6. Post-Unpack Analysis\n- Dump memory at OEP (Scylla, LordPE, x64dbg)\n- Fix imports (Import ReConstructor, Scylla)\n- Re-analyze unpacked binary (strings, imports, CFG)",
+  "methodology": "## Investigation Methodology\n\n### 1. Packer Indicators\n| Indicator | What It Means |\n|-----------|---------------|\n| **Few imports** (only LoadLibrary/GetProcAddress) | Manual import resolution |\n| **High entropy** (>7.5) in all sections | Encrypted/compressed |\n| **Entry point in last/weird section** | Packer stub |\n| **Non-standard section names** | Packer-specific (UPX0, .aspack, .themida, .vmp0) |\n| **Missing relocations** with ASLR | Packer strips them |\n| **TLS callbacks** present | Pre-entry unpacking |\n| **Signature in header** | `UPX!`, `ASPack`, `MEW`, etc. |\n\n### 2. Common Packer Signatures\n| Packer | Signature | Section Names | Notes |\n|--------|-----------|---------------|-------|\n| **UPX** | `UPX!` (0x20-0x23) | UPX0, UPX1 | Most common, open source |\n| **ASPack** | `ASPack` / `.aspack` | `.aspack`, `.adata` | Commercial |\n| **Themida** | `.themida`, `.tmd` | `.themida`, `.tmd` | Heavy anti-debug |\n| **VMProtect** | `.vmp0`, `.vmp1` | `.vmp0`, `.vmp1` | Virtualization-based |\n| **Enigma** | `.enigma` | `.enigma`, `.edata` | Virtualization |\n| **PECompact** | `PEC2` | `.pec1`, `.pec2` | Commercial |\n| **MPRESS** | `MPRESS` | `.mpress` | Free |\n| **Custom** | (none) | Random / none | Hardest |\n\n### 3. Entropy Analysis\n```python\nimport pefile, math\npe = pefile.PE('sample.exe')\nfor s in pe.sections:\n    data = s.get_data()\n    if len(data) == 0: continue\n    entropy = -sum((data.count(b)/len(data))*math.log2(data.count(b)/len(data)) for b in set(data))\n    print(f'{s.Name.decode().strip():10s} Entropy: {entropy:.2f}')\n```\n- Normal code: 6.0-7.2\n- Packed/encrypted: 7.5-8.0\n\n### 4. Identification Workflow\n1. Run `die` (Detect It Easy) or `pestudio` \u2192 auto-detect\n2. Check section names manually in PE-bear/CFF Explorer\n3. Scan for signatures at known offsets\n4. Check entropy per section\n5. Verify entry point location\n\n### 5. Unpacking Strategy\n| Packer | Method |\n|--------|--------|\n| **UPX** | `upx -d sample.exe` (trivial) |\n| **ASPack** | ESP tracing / manual dump |\n| **Themida/VMProtect** | Dynamic dump at OEP (hardware BP on write to .text) |\n| **Custom** | Dynamic analysis, memory dump, import reconstruction |\n\n### 6. Post-Unpack Analysis\n- Dump memory at OEP (Scylla, LordPE, x64dbg)\n- Fix imports (Import ReConstructor, Scylla)\n- Re-analyze unpacked binary (strings, imports, CFG)",
   "commonPitfalls": [
     "Assuming high entropy = packed (could be encrypted resources, compressed data)",
     "Missing that some packers don't change section names (custom/modified)",
-    "Not dumping at correct OEP — original entry point after unpack",
+    "Not dumping at correct OEP \u2014 original entry point after unpack",
     "Forgetting to fix imports after dump (IAT is rebuilt at runtime)",
     "Overlooking that some packers have anti-dump tricks (nanomites, etc.)"
   ],
   "tools": [
-    "Detect It Easy (DIE) — best auto-detection",
+    "Detect It Easy (DIE) \u2014 best auto-detection",
     "PE-bear / CFF Explorer (section names, entropy)",
     "upx -d (for UPX)",
     "x64dbg + Scylla (dump + import fix)",
@@ -77,10 +77,10 @@
   ],
   "extensions": [
     "Unpack a UPX sample with `upx -d`, compare imports before/after",
-    "Analyze a Themida/VMProtect sample — find OEP, dump with x64dbg",
+    "Analyze a Themida/VMProtect sample \u2014 find OEP, dump with x64dbg",
     "Write a YARA rule for UPX signature + section names",
     "Research: How does UPX compression work (LZMA/NRV)?",
     "Build an automated unpacker for a simple custom packer"
   ],
-  "solution": "## Packer Identification — Solution\n\n1. The **`UPX!`** signature (offset 0x20) identifies the packer.\n2. Section names **UPX0** and **UPX1** confirm it.\n3. UPX0 is the empty executable staging section; UPX1 holds the compressed payload.\n4. The packer is **UPX**.\n\n**Remediation**: UPX is trivially reversible — `upx -d packed.exe` restores the original. The analyst then re-analyzes the unpacked binary, where the real strings/imports reappear."
+  "solution": "## Packer Identification \u2014 Solution\n\n1. The **`UPX!`** signature (offset 0x20) identifies the packer.\n2. Section names **UPX0** and **UPX1** confirm it.\n3. UPX0 is the empty executable staging section; UPX1 holds the compressed payload.\n4. The packer is **UPX**.\n\n**Remediation**: UPX is trivially reversible \u2014 `upx -d packed.exe` restores the original. The analyst then re-analyzes the unpacked binary, where the real strings/imports reappear."
 }

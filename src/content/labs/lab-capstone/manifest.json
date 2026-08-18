@@ -8,7 +8,7 @@
   "estimatedTime": 45,
   "prerequisites": [
     "All prior modules (start through anti-re)",
-    "Full investigation workflow: strings → imports → PE structure → behavior → verdict",
+    "Full investigation workflow: strings \u2192 imports \u2192 PE structure \u2192 behavior \u2192 verdict",
     "YARA rule writing",
     "IOC extraction and reporting",
     "MITRE ATT&CK mapping"
@@ -17,7 +17,7 @@
     "format": "PE",
     "name": "unknown.exe",
     "file": "/binaries/lab-capstone.hex",
-    "bytes": 2048
+    "bytes": 2560
   },
   "questions": [
     {
@@ -56,13 +56,13 @@
     "The imports cluster into three capabilities: network, injection, persistence.",
     "Network + injection + persistence together describe an implant, not a single-purpose tool."
   ],
-  "methodology": "## Investigation Methodology — The RE Loop\n\n### Phase 1: Static Triage (5 min)\n- **File info**: Hash (MD5/SHA256), size, type, architecture\n- **PE headers**: Sections, entry point, timestamps, characteristics\n- **Strings**: `strings -a -el` — extract ASCII + UTF-16\n- **Imports/Exports**: Capability fingerprint\n- **Resources**: Icons, manifests, embedded files\n\n### Phase 2: Capability Mapping (10 min)\nCluster imports into ATT&CK techniques:\n\n| Cluster | APIs | Technique |\n|---------|------|-----------|\n| **Network** | `InternetOpen`, `InternetConnect`, `HttpSendRequest` | T1071.001 |\n| **Injection** | `VirtualAllocEx`, `WriteProcessMemory`, `CreateRemoteThread` | T1055.001 |\n| **Persistence** | `RegSetValueEx`, `Run` key path | T1547.001 |\n| **Defense Evasion** | `IsDebuggerPresent`, `VirtualProtectEx` (RWX) | T1622, T1027 |\n| **Discovery** | `GetSystemInfo`, `GetVersionEx` | T1082 |\n\n### Phase 3: Behavioral Reconstruction (15 min)\n1. **Entry Point Analysis**: What runs first? TLS callbacks? Packers?\n2. **Main Flow**: Decompile entry → trace to `main`/`WinMain`\n3. **Key Functions**: Identify:\n   - C2 communication loop\n   - Injection routine\n   - Persistence installer\n   - Anti-analysis checks\n4. **Data Flow**: Trace strings → variables → API arguments\n\n### Phase 4: IOC Extraction (10 min)\n| Type | Value | Context |\n|------|-------|---------|\n| **Network** | `deep-space-c2.net:443/beacon.php` | C2 endpoint |\n| **Host** | `Global\\capstone_mutex_7` | Mutex |\n| **Persistence** | `HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run` | Run key |\n| **File** | `%APPDATA%\\winlogon.exe` | Dropped payload |\n| **Process** | `winlogon.exe` (masqueraded) | Process name |\n| **Registry** | Run key value name/data | Persistence artifact |\n\n### Phase 5: Attribution & Reporting (5 min)\n- **Malware Family**: Compare IOCs to known families (VT, Malpedia)\n- **ATT&CK Mapping**: Tag each capability\n- **Threat Actor**: If infrastructure overlaps known campaigns\n- **Verdict**: Classify (RAT, loader, ransomware, wiper, etc.)\n- **Report**: Executive summary + technical details + IOCs + mitigations",
+  "methodology": "## Investigation Methodology \u2014 The RE Loop\n\n### Phase 1: Static Triage (5 min)\n- **File info**: Hash (MD5/SHA256), size, type, architecture\n- **PE headers**: Sections, entry point, timestamps, characteristics\n- **Strings**: `strings -a -el` \u2014 extract ASCII + UTF-16\n- **Imports/Exports**: Capability fingerprint\n- **Resources**: Icons, manifests, embedded files\n\n### Phase 2: Capability Mapping (10 min)\nCluster imports into ATT&CK techniques:\n\n| Cluster | APIs | Technique |\n|---------|------|-----------|\n| **Network** | `InternetOpen`, `InternetConnect`, `HttpSendRequest` | T1071.001 |\n| **Injection** | `VirtualAllocEx`, `WriteProcessMemory`, `CreateRemoteThread` | T1055.001 |\n| **Persistence** | `RegSetValueEx`, `Run` key path | T1547.001 |\n| **Defense Evasion** | `IsDebuggerPresent`, `VirtualProtectEx` (RWX) | T1622, T1027 |\n| **Discovery** | `GetSystemInfo`, `GetVersionEx` | T1082 |\n\n### Phase 3: Behavioral Reconstruction (15 min)\n1. **Entry Point Analysis**: What runs first? TLS callbacks? Packers?\n2. **Main Flow**: Decompile entry \u2192 trace to `main`/`WinMain`\n3. **Key Functions**: Identify:\n   - C2 communication loop\n   - Injection routine\n   - Persistence installer\n   - Anti-analysis checks\n4. **Data Flow**: Trace strings \u2192 variables \u2192 API arguments\n\n### Phase 4: IOC Extraction (10 min)\n| Type | Value | Context |\n|------|-------|---------|\n| **Network** | `deep-space-c2.net:443/beacon.php` | C2 endpoint |\n| **Host** | `Global\\capstone_mutex_7` | Mutex |\n| **Persistence** | `HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run` | Run key |\n| **File** | `%APPDATA%\\winlogon.exe` | Dropped payload |\n| **Process** | `winlogon.exe` (masqueraded) | Process name |\n| **Registry** | Run key value name/data | Persistence artifact |\n\n### Phase 5: Attribution & Reporting (5 min)\n- **Malware Family**: Compare IOCs to known families (VT, Malpedia)\n- **ATT&CK Mapping**: Tag each capability\n- **Threat Actor**: If infrastructure overlaps known campaigns\n- **Verdict**: Classify (RAT, loader, ransomware, wiper, etc.)\n- **Report**: Executive summary + technical details + IOCs + mitigations",
   "commonPitfalls": [
-    "Stopping at strings — missing dynamically resolved imports",
-    "Not checking for packers — UPX, custom stubs hide imports/code",
-    "Missing TLS callbacks — code runs before entry point",
-    "Overlooking resources — embedded payloads, configs, scripts",
-    "Not verifying dropped file — hash it, analyze it separately",
+    "Stopping at strings \u2014 missing dynamically resolved imports",
+    "Not checking for packers \u2014 UPX, custom stubs hide imports/code",
+    "Missing TLS callbacks \u2014 code runs before entry point",
+    "Overlooking resources \u2014 embedded payloads, configs, scripts",
+    "Not verifying dropped file \u2014 hash it, analyze it separately",
     "Rushing to verdict without full capability picture"
   ],
   "tools": [
@@ -73,7 +73,7 @@
     "x64dbg (dynamic verification)",
     "VirusTotal / MalwareBazaar (intel pivot)",
     "MITRE ATT&CK Navigator (mapping)",
-    "CAPA (Mandiant) — automated capability detection"
+    "CAPA (Mandiant) \u2014 automated capability detection"
   ],
   "references": [
     "All course modules",
@@ -84,11 +84,11 @@
   ],
   "extensions": [
     "Write a comprehensive YARA rule family for this malware",
-    "Analyze the dropped `winlogon.exe` — is it the same or different?",
+    "Analyze the dropped `winlogon.exe` \u2014 is it the same or different?",
     "Map to MITRE ATT&CK and create a Navigator layer",
     "Research: How would you detect this in memory (Volatility)?",
     "Build a Sigma rule for the persistence registry write",
     "Simulate: How would this behave in a sandbox? What would it hide?"
   ],
-  "solution": "## The Unknown Binary — Verdict\n\nThe full profile, assembled with the investigation loop:\n\n**Strings**\n- C2 domain: `deep-space-c2.net`\n- Mutex: `Global\\capstone_mutex_7`\n- Persistence: `Software\\Microsoft\\Windows\\CurrentVersion\\Run`\n- Dropped file: `%APPDATA%\\winlogon.exe`\n\n**Imports (capabilities)**\n- Network: `InternetOpenW` / `InternetConnectW` / `HttpSendRequestW` (HTTP C2)\n- Injection: `VirtualAllocEx` / `CreateRemoteThread` (run code in other processes)\n- Persistence: `RegSetValueExW` (Run key)\n\n**Narrative**: drops `winlogon.exe` (masquerading as the legitimate process), writes a Run key, guards itself with a mutex, and phones home over HTTP.\n\n**Verdict**: a **remote access trojan** (RAT).\n\n**IOCs**: `deep-space-c2.net`, `Global\\capstone_mutex_7`, the Run-key value, `%APPDATA%\\winlogon.exe`, and the sample hash."
+  "solution": "## The Unknown Binary \u2014 Verdict\n\nThe full profile, assembled with the investigation loop:\n\n**Strings**\n- C2 domain: `deep-space-c2.net`\n- Mutex: `Global\\capstone_mutex_7`\n- Persistence: `Software\\Microsoft\\Windows\\CurrentVersion\\Run`\n- Dropped file: `%APPDATA%\\winlogon.exe`\n\n**Imports (capabilities)**\n- Network: `InternetOpenW` / `InternetConnectW` / `HttpSendRequestW` (HTTP C2)\n- Injection: `VirtualAllocEx` / `CreateRemoteThread` (run code in other processes)\n- Persistence: `RegSetValueExW` (Run key)\n\n**Narrative**: drops `winlogon.exe` (masquerading as the legitimate process), writes a Run key, guards itself with a mutex, and phones home over HTTP.\n\n**Verdict**: a **remote access trojan** (RAT).\n\n**IOCs**: `deep-space-c2.net`, `Global\\capstone_mutex_7`, the Run-key value, `%APPDATA%\\winlogon.exe`, and the sample hash."
 }
