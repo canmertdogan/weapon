@@ -10,6 +10,7 @@ const base = '/weapon/';
 // https://astro.build/config
 export default defineConfig({
   output: 'static',
+  site: 'https://canmertdogan.github.io',
   base,
   redirects: {
     '/course': base,
